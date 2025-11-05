@@ -1,7 +1,9 @@
 import { View, Text, FlatList, ScrollView } from 'react-native'
-import Navbar from '../../components/Navbar/Navbar'
 import Carousel from '../../components/Carousel/Carouse'
 import ProductCard from '../../components/ProductCard/ProductCard';
+import RecipeCard from '../../components/RecipeCard/RecipeCard';
+import LayoutWithNavbar from '../../components/Layout/LayoutWithNavbar';
+import AboutUs from '../../components/AboutUs/AboutUs';
 import { useEffect, useState } from 'react';
 
 // Importar la variable de entorno
@@ -13,7 +15,7 @@ const pastelCarousel2 = require('../../assets/pastel_carousel_2.png');
 const pastelCarousel3 = require('../../assets/pastel_carousel_3.png');
 const pastelCarousel4 = require('../../assets/pastel_carousel_4.png');
 
-function home() {
+function Home() {
     const carouselImages = [
         pastelCarousel1,
         pastelCarousel2,
@@ -22,24 +24,31 @@ function home() {
     ];
 
     const [bestSellingProducts, setBestSellingProducts] = useState([]);
+    const [recipes, setRecipes] = useState([]);
 
     useEffect(() => {
         const fetchBestSellingProducts = async () => {
             try {
                 const response = await fetch(`${API_URL}/productos`);
-
+                const responseRecetas = await fetch(`${API_URL}/recetas`);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
                 const data = await response.json();
+                const recetasData = await responseRecetas.json();
 
                 // Ordenar por ventas descendente y tomar solo los 3 primeros
                 const topThree = data
                     .sort((a: any, b: any) => (b.ventas || 0) - (a.ventas || 0))
                     .slice(0, 3);
 
+                // Tomar solo las 3 primeras recetas
+                const topThreeRecipes = recetasData.slice(0, 3);
+
                 setBestSellingProducts(topThree);
+                setRecipes(topThreeRecipes);
             } catch (error) {
                 console.error('Error al obtener productos:', error);
                 console.error('API_URL:', API_URL);
@@ -50,31 +59,52 @@ function home() {
     }, []);
 
     return (
-        <ScrollView className="flex-1 bg-white">
-            <Navbar />
-            <Carousel images={carouselImages} />
-            <View className='px-3 py-4'>
-                <Text className="text-bizcochito-red text-xl font-bold mb-3 text-center">Productos más vendidos</Text>
-                <FlatList
-                    data={bestSellingProducts}
-                    renderItem={({ item }: { item: any }) => (
-                        <ProductCard
-                            id={item.id.toString()}
-                            name={item.nombre || 'Sin nombre'}
-                            category={item.categoriaId?.toString() || 'Sin categoría'}
-                            price={item.precio || 0}
-                            description={item.descripcion || 'Sin descripción'}
-                            image={item.imagen || ''}
-                        />
-                    )}
-                    keyExtractor={(item: any) => item.id.toString()}
-                    numColumns={3}
-                    columnWrapperStyle={{ justifyContent: 'space-between' }}
-                    scrollEnabled={false}
-                />
-            </View>
-        </ScrollView>
+        <LayoutWithNavbar>
+            <ScrollView className="flex-1 bg-white">
+                <Carousel images={carouselImages} />
+                <View className='px-3 py-4'>
+                    <Text className="text-bizcochito-red text-xl font-bold mb-3 text-center">Productos más vendidos</Text>
+                    <FlatList
+                        data={bestSellingProducts}
+                        renderItem={({ item }: { item: any }) => (
+                            <ProductCard
+                                id={item.id.toString()}
+                                name={item.nombre || 'Sin nombre'}
+                                category={item.categoriaId?.toString() || 'Sin categoría'}
+                                price={item.precio || 0}
+                                description={item.descripcion || 'Sin descripción'}
+                                image={item.imagen || ''}
+                            />
+                        )}
+                        keyExtractor={(item: any) => item.id.toString()}
+                        numColumns={3}
+                        columnWrapperStyle={{ justifyContent: 'space-between' }}
+                        scrollEnabled={false}
+                    />
+                    <AboutUs />
+                    {/* Sección de Recetas */}
+                    <Text className="text-bizcochito-red text-xl font-bold mb-3 mt-6 text-center">Recetas Destacadas</Text>
+                    <FlatList
+                        data={recipes}
+                        renderItem={({ item }: { item: any }) => (
+                            <RecipeCard
+                                id={item.id}
+                                nombre={item.titulo || 'Sin nombre'}
+                                autor={item.autor || 'Autor desconocido'}
+                                descripcion={item.descripcion || 'Sin descripción'}
+                                imagen={item.imagenUrl || ''}
+                            />
+                        )}
+                        keyExtractor={(item: any) => item.id.toString()}
+                        numColumns={3}
+                        columnWrapperStyle={{ justifyContent: 'space-between' }}
+                        scrollEnabled={false}
+                    />
+                    
+                </View>
+            </ScrollView>
+        </LayoutWithNavbar>
     )
 }
 
-export default home
+export default Home

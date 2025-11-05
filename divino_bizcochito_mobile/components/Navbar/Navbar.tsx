@@ -2,15 +2,47 @@ import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+
+type RootStackParamList = {
+  Login: undefined;
+  Registro: undefined;
+  Home: undefined;
+  Profile: undefined;
+};
 
 interface NavbarProps {
   activeTab?: 'home' | 'edit' | 'messages' | 'cart' | 'profile';
-  onTabPress?: (tab: 'home' | 'edit' | 'messages' | 'cart' | 'profile') => void;
 }
 
-export default function Navbar({ activeTab = 'home', onTabPress }: NavbarProps) {
+export default function Navbar({ activeTab = 'home' }: NavbarProps) {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
   const getColor = (tab: string) => {
     return activeTab === tab ? '#8B2E2E' : '#C74444';
+  };
+
+  const handleTabPress = (tab: 'home' | 'edit' | 'messages' | 'cart' | 'profile') => {
+    switch (tab) {
+      case 'home':
+        navigation.navigate('Home');
+        break;
+      case 'profile':
+        navigation.navigate('Profile');
+        break;
+      case 'edit':
+        // TODO: Navegar a vista de edición/recetas
+        console.log('Navegar a edición');
+        break;
+      case 'messages':
+        // TODO: Navegar a vista de mensajes
+        console.log('Navegar a mensajes');
+        break;
+      case 'cart':
+        // TODO: Navegar a vista de carrito
+        console.log('Navegar a carrito');
+        break;
+    }
   };
 
   return (
@@ -18,7 +50,7 @@ export default function Navbar({ activeTab = 'home', onTabPress }: NavbarProps) 
       <View className="flex-row justify-around items-center bg-bizcochito-beige py-3 px-5 border-b-2 border-[#D4C4B0] shadow-sm">
       <TouchableOpacity 
         className="p-2 justify-center items-center"
-        onPress={() => onTabPress?.('home')}
+        onPress={() => handleTabPress('home')}
       >
         <Ionicons 
           name="home" 
@@ -29,7 +61,7 @@ export default function Navbar({ activeTab = 'home', onTabPress }: NavbarProps) 
 
       <TouchableOpacity 
         className="p-2 justify-center items-center"
-        onPress={() => onTabPress?.('edit')}
+        onPress={() => handleTabPress('edit')}
       >
         <MaterialIcons 
           name="edit" 
@@ -40,7 +72,7 @@ export default function Navbar({ activeTab = 'home', onTabPress }: NavbarProps) 
 
       <TouchableOpacity 
         className="p-2 justify-center items-center"
-        onPress={() => onTabPress?.('messages')}
+        onPress={() => handleTabPress('messages')}
       >
         <Ionicons 
           name="mail" 
@@ -51,7 +83,7 @@ export default function Navbar({ activeTab = 'home', onTabPress }: NavbarProps) 
 
       <TouchableOpacity 
         className="p-2 justify-center items-center"
-        onPress={() => onTabPress?.('cart')}
+        onPress={() => handleTabPress('cart')}
       >
         <Ionicons 
           name="cart" 
@@ -62,7 +94,7 @@ export default function Navbar({ activeTab = 'home', onTabPress }: NavbarProps) 
 
       <TouchableOpacity 
         className="p-2 justify-center items-center"
-        onPress={() => onTabPress?.('profile')}
+        onPress={() => handleTabPress('profile')}
       >
         <FontAwesome5 
           name="user" 

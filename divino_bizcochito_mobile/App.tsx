@@ -1,27 +1,35 @@
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { AuthProvider } from './contexts/AuthContext';
 import "./global.css"
-import LoginCard from './components/LoginCard/LoginCard';
-import RegisterCard from './components/RegisterCard/RegisterCard';
-import Home from './views/Home/home';
+import LoginView from './views/Login/LoginView';
+import Home from './views/Home/Home';
+import RegistroView from './views/Registro/RegistroView';
+import ProfileView from './views/Profile/ProfileView';
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'home'>('login');
 
   return (
-    <View style={{ flex: 1 }}>
-      {currentView === 'login' ? (
-        <LoginCard 
-          onNavigateToRegister={() => setCurrentView('register')}
-          onLogin={() => setCurrentView('home')}
-        />
-      ) : currentView === 'register' ? (
-        <RegisterCard onBack={() => setCurrentView('login')} />
-      ) : (
-        <Home />
-      )}
-      <StatusBar style="auto" />
-    </View>
+    <AuthProvider>
+      <NavigationContainer>
+        <Stack.Navigator 
+          initialRouteName="Login"
+          screenOptions={{
+            headerShown: false
+          }}
+        >
+          <Stack.Screen name="Login" component={LoginView} />
+          <Stack.Screen name="Registro" component={RegistroView} />
+          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="Profile" component={ProfileView} />
+        </Stack.Navigator>
+        <StatusBar style="auto" />
+      </NavigationContainer>
+    </AuthProvider>
   );
 }

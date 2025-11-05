@@ -1,19 +1,31 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LoginCardProps {
   onNavigateToRegister: () => void;
-  onLogin: () => void;
+  onLoginSuccess?: () => void;
 }
 
-export default function LoginCard({ onNavigateToRegister, onLogin }: LoginCardProps) {
-  const [usuario, setUsuario] = useState('');
-  const [contraseña, setContraseña] = useState('');
+export default function LoginCard({ onNavigateToRegister, onLoginSuccess }: LoginCardProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { handleLogin } = useAuth();
 
-  const handleLogin = () => {
-    console.log('Iniciar sesión', { usuario, contraseña });
-    // Aquí puedes agregar la lógica de autenticación
-    onLogin();
+  const handleLoginSubmit = async () => {
+    try {
+      const { error } = await handleLogin(email, password);
+      
+      if (error) {
+        alert('Error al iniciar sesión: ' + error.message);
+      } else {
+        console.log('✅ Inicio de sesión exitoso');
+        onLoginSuccess?.();
+      }
+    } catch (error) {
+      console.error('Error inesperado:', error);
+      alert('Error al iniciar sesión');
+    }
   };
 
   return (
@@ -24,14 +36,15 @@ export default function LoginCard({ onNavigateToRegister, onLogin }: LoginCardPr
         </Text>
         
         <View className="mb-4">
-          <Text className="text-white text-sm mb-2 font-medium">Usuario</Text>
+          <Text className="text-white text-sm mb-2 font-medium">Email</Text>
           <TextInput
             className="bg-white rounded px-3 py-3 text-sm text-gray-800"
-            placeholder="nombre.usuario"
+            placeholder="Ingresa tu email"
             placeholderTextColor="#999"
-            value={usuario}
-            onChangeText={setUsuario}
+            value={email}
+            onChangeText={setEmail}
             autoCapitalize="none"
+            keyboardType="email-address"
           />
         </View>
 
@@ -39,10 +52,10 @@ export default function LoginCard({ onNavigateToRegister, onLogin }: LoginCardPr
           <Text className="text-white text-sm mb-2 font-medium">Contraseña</Text>
           <TextInput
             className="bg-white rounded px-3 py-3 text-sm text-gray-800"
-            placeholder="nombre.contraseña"
+            placeholder="Ingresa tu contraseña"
             placeholderTextColor="#999"
-            value={contraseña}
-            onChangeText={setContraseña}
+            value={password}
+            onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
           />
@@ -50,7 +63,7 @@ export default function LoginCard({ onNavigateToRegister, onLogin }: LoginCardPr
 
         <TouchableOpacity 
           className="bg-bizcochito-dark-red rounded px-3 py-3.5 mt-2 mb-3"
-          onPress={handleLogin}
+          onPress={handleLoginSubmit}
         >
           <Text className="text-white text-base font-bold text-center">
             Iniciar sesión

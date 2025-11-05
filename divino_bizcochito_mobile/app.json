@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "divino_bizcochito_mobile",
-    "slug": "divino_bizcochito_mobile",
+    "slug": "divino-bizcochito",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,11 +21,18 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.divinobizcochito.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "014dfe65-3188-4e00-878a-da4eeeb3f9a8"
+      }
+    },
+    "owner": "jaco1416"
   }
 }

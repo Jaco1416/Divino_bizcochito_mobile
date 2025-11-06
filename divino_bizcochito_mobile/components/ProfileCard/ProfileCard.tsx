@@ -51,7 +51,7 @@ export default function ProfileCard({ onEditPress }: ProfileCardProps) {
 
       {/* Rol/Tipo de usuario */}
       <Text className="text-gray-600 text-base mb-4">
-        Cliente
+        {perfil?.rol || 'Cliente'}
       </Text>
 
       {/* Email */}

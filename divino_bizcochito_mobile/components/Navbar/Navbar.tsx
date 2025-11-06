@@ -3,20 +3,14 @@ import { View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { AppNavigation } from '../../types/navigation';
 
-type RootStackParamList = {
-  Login: undefined;
-  Registro: undefined;
-  Home: undefined;
-  Profile: undefined;
-};
-
-interface NavbarProps {
+type NavbarProps = {
   activeTab?: 'home' | 'edit' | 'messages' | 'cart' | 'profile';
 }
 
 export default function Navbar({ activeTab = 'home' }: NavbarProps) {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<AppNavigation>();
 
   const getColor = (tab: string) => {
     return activeTab === tab ? '#8B2E2E' : '#C74444';
@@ -32,7 +26,7 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
         break;
       case 'edit':
         // TODO: Navegar a vista de edición/recetas
-        console.log('Navegar a edición');
+        navigation.navigate('Recetas');
         break;
       case 'messages':
         // TODO: Navegar a vista de mensajes

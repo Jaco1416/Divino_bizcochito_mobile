@@ -3,10 +3,13 @@ import type { RouteProp } from '@react-navigation/native';
 
 export type RecipeFromDB = {
   id: number | string;
-  titulo?: string | null;
+  titulo: string;
+  descripcion: string;
+  imagenUrl: string;
   autor?: string | null;
-  descripcion?: string | null;
-  imagenUrl?: string | null;
+  categoria?: string | null;
+  ingredientes?: string | null;
+  pasos?: string | null;
 };
 
 export type RootStackParamList = {
@@ -14,11 +17,14 @@ export type RootStackParamList = {
   Registro: undefined;
   Home: undefined;
   Profile: undefined;
-  Recetas: undefined; // usa undefined si no pasas params
+  Recetas: { lockBack?: boolean } | undefined;
+  CrearReceta: undefined;
+  DetalleReceta: {
+    id: number | string;
+    recipe?: RecipeFromDB;
+  };
 };
 
-// Tipo para useNavigation en componentes como el Navbar
 export type AppNavigation = NativeStackNavigationProp<RootStackParamList>;
-
-// Tipo para usar useRoute en RecetasView
 export type RecetasRouteProp = RouteProp<RootStackParamList, 'Recetas'>;
+export type DetalleRecetaRouteProp = RouteProp<RootStackParamList, 'DetalleReceta'>;

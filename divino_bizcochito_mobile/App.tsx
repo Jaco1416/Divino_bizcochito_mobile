@@ -11,6 +11,8 @@ import Home from './views/Home/home';
 import RegistroView from './views/Registro/RegistroView';
 import ProfileView from './views/Profile/ProfileView';
 import RecetasView from './views/Recetas/RecetasView';
+import CrearRecetaView from './views/Recetas/CrearRecetaView';
+import DetalleRecetaView from './views/Recetas/DetalleRecetaView';
 
 import type { RootStackParamList } from './types/navigation';
 
@@ -32,6 +34,8 @@ export default function App() {
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="Profile" component={ProfileView} />
           <Stack.Screen name="Recetas" component={RecetasView} />
+          <Stack.Screen name="CrearReceta" component={CrearRecetaView} />
+          <Stack.Screen name="DetalleReceta" component={DetalleRecetaView} />
         </Stack.Navigator>
         <StatusBar style="auto" />
       </NavigationContainer>

@@ -30,11 +30,11 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
         break;
       case 'messages':
         // TODO: Navegar a vista de mensajes
-        console.log('Navegar a mensajes');
+        navigation.navigate('Catalogo');
         break;
       case 'cart':
         // TODO: Navegar a vista de carrito
-        console.log('Navegar a carrito');
+        navigation.navigate('Carrito');
         break;
     }
   };
@@ -69,8 +69,8 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
         onPress={() => handleTabPress('messages')}
       >
         <Ionicons 
-          name="mail" 
-          size={28} 
+          name="pricetags-sharp" 
+          size={24} 
           color={getColor('messages')} 
         />
       </TouchableOpacity>

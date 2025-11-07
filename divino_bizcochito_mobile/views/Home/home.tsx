@@ -1,10 +1,12 @@
 import { View, Text, FlatList, ScrollView } from 'react-native'
+import { useState, useCallback } from 'react';
+import { useFocusEffect, useNavigation, NavigationProp } from '@react-navigation/native';
 import Carousel from '../../components/Carousel/Carouse'
 import ProductCard from '../../components/ProductCard/ProductCard';
 import RecipeCard from '../../components/RecipeCard/RecipeCard';
 import LayoutWithNavbar from '../../components/Layout/LayoutWithNavbar';
 import AboutUs from '../../components/AboutUs/AboutUs';
-import { useEffect, useState } from 'react';
+
 
 // Importar la variable de entorno
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -15,7 +17,20 @@ const pastelCarousel2 = require('../../assets/pastel_carousel_2.png');
 const pastelCarousel3 = require('../../assets/pastel_carousel_3.png');
 const pastelCarousel4 = require('../../assets/pastel_carousel_4.png');
 
+type RootStackParamList = {
+  Login: undefined;
+  Registro: undefined;
+  Home: undefined;
+  Profile: undefined;
+  DetalleProducto: {
+    id: number;
+  };
+};
+
 function Home() {
+
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
     const carouselImages = [
         pastelCarousel1,
         pastelCarousel2,
@@ -26,37 +41,41 @@ function Home() {
     const [bestSellingProducts, setBestSellingProducts] = useState([]);
     const [recipes, setRecipes] = useState([]);
 
-    useEffect(() => {
-        const fetchBestSellingProducts = async () => {
-            try {
-                const response = await fetch(`${API_URL}/productos`);
-                const responseRecetas = await fetch(`${API_URL}/recetas`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const recetasData = await responseRecetas.json();
-
-                // Ordenar por ventas descendente y tomar solo los 3 primeros
-                const topThree = data
-                    .sort((a: any, b: any) => (b.ventas || 0) - (a.ventas || 0))
-                    .slice(0, 3);
-
-                // Tomar solo las 3 primeras recetas
-                const topThreeRecipes = recetasData.slice(0, 3);
-
-                setBestSellingProducts(topThree);
-                setRecipes(topThreeRecipes);
-            } catch (error) {
-                console.error('Error al obtener productos:', error);
-                console.error('API_URL:', API_URL);
-                // Puedes agregar un estado para mostrar el error en la UI si lo deseas
+    const fetchBestSellingProducts = async () => {
+        try {
+            const response = await fetch(`${API_URL}/productos`);
+            const responseRecetas = await fetch(`${API_URL}/recetas`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+
+            const data = await response.json();
+            const recetasData = await responseRecetas.json();
+
+            // Ordenar por ventas descendente y tomar solo los 3 primeros
+            const topThree = data
+                .sort((a: any, b: any) => (b.ventas || 0) - (a.ventas || 0))
+                .slice(0, 3);
+
+            // Tomar solo las 3 primeras recetas
+            const topThreeRecipes = recetasData.slice(0, 3);
+
+            setBestSellingProducts(topThree);
+            setRecipes(topThreeRecipes);
+        } catch (error) {
+            console.error('Error al obtener productos:', error);
+            console.error('API_URL:', API_URL);
         }
-        fetchBestSellingProducts();
-    }, []);
+    };
+
+    // Ejecutar fetch cuando la vista esté en foco
+    useFocusEffect(
+        useCallback(() => {
+            fetchBestSellingProducts();
+        }, [])
+    );
+
 
     return (
         <LayoutWithNavbar>
@@ -74,6 +93,7 @@ function Home() {
                                 price={item.precio || 0}
                                 description={item.descripcion || 'Sin descripción'}
                                 image={item.imagen || ''}
+                                onPress={() => navigation.navigate('DetalleProducto', { id: item.id })}
                             />
                         )}
                         keyExtractor={(item: any) => item.id.toString()}

@@ -92,9 +92,12 @@ export default function RecetasView() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchAllRecipes();
-  }, [fetchAllRecipes]);
+  // Ejecutar fetch cuando la vista esté en foco
+  useFocusEffect(
+    useCallback(() => {
+      fetchAllRecipes();
+    }, [fetchAllRecipes])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

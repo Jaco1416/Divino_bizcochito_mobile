@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "../libs/supabaseClient";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Perfil {
   id: string;
@@ -52,21 +53,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return data;
   };
 
+  // 🔹 Guardar sesión en AsyncStorage
+  const saveSession = async (user: any, perfil: Perfil | null) => {
+    try {
+      await AsyncStorage.setItem('@user_session', JSON.stringify({ user, perfil }));
+      console.log("✅ Sesión guardada en AsyncStorage");
+    } catch (error) {
+      console.error("❌ Error al guardar sesión:", error);
+    }
+  };
+
+  // 🔹 Cargar sesión desde AsyncStorage
+  const loadSession = async () => {
+    try {
+      const sessionData = await AsyncStorage.getItem('@user_session');
+      if (sessionData) {
+        const { user, perfil } = JSON.parse(sessionData);
+        console.log("✅ Sesión cargada desde AsyncStorage");
+        return { user, perfil };
+      }
+      return null;
+    } catch (error) {
+      console.error("❌ Error al cargar sesión:", error);
+      return null;
+    }
+  };
+
+  // 🔹 Limpiar sesión de AsyncStorage
+  const clearSession = async () => {
+    try {
+      await AsyncStorage.removeItem('@user_session');
+      console.log("✅ Sesión eliminada de AsyncStorage");
+    } catch (error) {
+      console.error("❌ Error al limpiar sesión:", error);
+    }
+  };
+
   // 🔹 Cargar sesión inicial
   useEffect(() => {
     const initialize = async () => {
       setLoading(true);
+      
+      // Verificar sesión con Supabase primero
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       if (session?.user) {
+        // Si hay sesión en Supabase, usarla
         const perfilData = await fetchPerfil(session.user.id);
         setUser(session.user);
         setPerfil(perfilData);
+        await saveSession(session.user, perfilData);
       } else {
-        setUser(null);
-        setPerfil(null);
+        // Si no hay sesión en Supabase, intentar cargar desde AsyncStorage
+        const savedSession = await loadSession();
+        if (savedSession) {
+          setUser(savedSession.user);
+          setPerfil(savedSession.perfil);
+        } else {
+          setUser(null);
+          setPerfil(null);
+        }
       }
 
       setLoading(false);
@@ -79,12 +127,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setUser(session.user);
         const perfilData = await fetchPerfil(session.user.id);
+        setUser(session.user);
         setPerfil(perfilData);
+        await saveSession(session.user, perfilData);
       } else {
-        setUser(null);
-        setPerfil(null);
+        // Solo limpiar si es un evento SIGNED_OUT explícito
+        if (_event === 'SIGNED_OUT') {
+          setUser(null);
+          setPerfil(null);
+          await clearSession();
+        }
       }
     });
 
@@ -99,6 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setPerfil(null);
+    await clearSession();
   };
 
   // 🔹 Iniciar sesión

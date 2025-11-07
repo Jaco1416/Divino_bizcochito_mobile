@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import LayoutWithNavbar from "../../components/Layout/LayoutWithNavbar";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { DetalleRecetaRouteProp, AppNavigation, RecipeFromDB } from "../../types/navigation";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -59,9 +59,12 @@ export default function DetalleRecetaView() {
     }
   }, [API_URL, recipeId]);
 
-  useEffect(() => {
-    if (!passed) fetchRecipe();
-  }, [passed, fetchRecipe]);
+  // Ejecutar fetch cuando la vista esté en foco
+  useFocusEffect(
+    useCallback(() => {
+      if (!passed) fetchRecipe();
+    }, [passed, fetchRecipe])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

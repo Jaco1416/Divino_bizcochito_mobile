@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import LoginCard from '../../components/LoginCard/LoginCard'
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuth } from '../../contexts/AuthContext';
 
 type RootStackParamList = {
   Login: undefined;
@@ -13,6 +14,15 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 function LoginView() {
   const navigation = useNavigation<NavigationProp>();
+  const { user, loading } = useAuth();
+
+  // Verificar si ya hay sesión activa y redirigir al Home
+  useEffect(() => {
+    if (!loading && user) {
+      console.log("Usuario ya autenticado, redirigiendo a Home...");
+      navigation.replace('Home');
+    }
+  }, [user, loading, navigation]);
 
   const redirectAfterLogin = () => {
     // Aquí puedes agregar lógica adicional si es necesario
@@ -26,6 +36,10 @@ function LoginView() {
     navigation.navigate('Registro');
   }
 
+  // Si está cargando, no mostrar nada o mostrar un loader
+  if (loading) {
+    return null;
+  }
 
   return (
     <LoginCard

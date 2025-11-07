@@ -7,14 +7,17 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider } from './contexts/AuthContext';
 import "./global.css"
 import LoginView from './views/Login/LoginView';
-import Home from './views/Home/home';
+import Home from './views/Home/Home';
 import RegistroView from './views/Registro/RegistroView';
 import ProfileView from './views/Profile/ProfileView';
 import RecetasView from './views/Recetas/RecetasView';
 import CrearRecetaView from './views/Recetas/CrearRecetaView';
 import DetalleRecetaView from './views/Recetas/DetalleRecetaView';
+import CatalogView from './views/Catalog/CatalogView';
 
 import type { RootStackParamList } from './types/navigation';
+import DetalleProducto from './views/Catalog/DetalleProducto';
+import CartView from './views/Cart/CartView';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -36,6 +39,9 @@ export default function App() {
           <Stack.Screen name="Recetas" component={RecetasView} />
           <Stack.Screen name="CrearReceta" component={CrearRecetaView} />
           <Stack.Screen name="DetalleReceta" component={DetalleRecetaView} />
+          <Stack.Screen name="DetalleProducto" component={DetalleProducto} />
+          <Stack.Screen name="Catalogo" component={CatalogView} />
+          <Stack.Screen name="Carrito" component={CartView} />
         </Stack.Navigator>
         <StatusBar style="auto" />
       </NavigationContainer>

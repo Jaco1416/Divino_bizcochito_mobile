@@ -217,7 +217,7 @@ export default function DetalleProductoView() {
 
       // Crear nuevo item (siempre como item separado)
       const newItem: CartItem = {
-        id: Date.now(), // ID único temporal
+        id: product.id,
         nombre: product.nombre,
         cantidad: cantidad,
         precio: product.precio,
@@ -237,7 +237,7 @@ export default function DetalleProductoView() {
         `${product.nombre} se agregó al carrito correctamente.`,
         [
           { text: 'Seguir comprando', style: 'cancel' },
-          { text: 'Ir al carrito', onPress: () => navigation.navigate('Cart' as never) }
+          { text: 'Ir al carrito', onPress: () => navigation.navigate('Carrito' as never) }
         ]
       );
 

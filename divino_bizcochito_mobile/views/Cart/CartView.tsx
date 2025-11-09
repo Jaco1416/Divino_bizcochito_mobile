@@ -2,8 +2,14 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LayoutWithNavbar from '../../components/Layout/LayoutWithNavbar';
+import { RootStackParamList } from '../../types/navigation';
+import { NativeStackNavigationProp } from 'react-native-screens/lib/typescript/native-stack/types';
+import { supabase } from "../../libs/supabaseClient";
+
 
 interface CartItem {
   id: number;
@@ -17,12 +23,16 @@ interface CartItem {
   mensajePersonalizado?: string;
 }
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Carrito">;
+
 const ENVIO_COSTO = 2000;
 const CART_STORAGE_KEY = '@cart_items';
 
 type TipoEntrega = 'retiro' | 'envio';
 
 function CartView() {
+  const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [tipoEntrega, setTipoEntrega] = useState<TipoEntrega>('retiro');
   const [formData, setFormData] = useState({
@@ -92,10 +102,65 @@ function CartView() {
     return tipoEntrega === 'envio' ? subtotal + ENVIO_COSTO : subtotal;
   };
 
-  const handleSubmit = () => {
-    console.log('Enviando pedido:', { formData, cartItems, total: calculateTotal(), tipoEntrega });
-    // Aquí irá la lógica para enviar el pedido
+  const handleSubmit = async () => {
+    try {
+      // 🧩 1️⃣ Armar objeto del carrito
+      const carritoData = {
+        perfilid: user?.id ?? null,
+        tipoentrega: tipoEntrega ?? "retiro",
+        datosenvio: formData ?? {},
+        items: cartItems,
+        estado: "pendiente",
+      };
+
+      console.log("🛒 Guardando carrito en Supabase:", carritoData);
+
+      // 🧱 2️⃣ Guardar carrito en Supabase y obtener su ID
+      const { data: nuevoCarrito, error: errCarrito } = await supabase
+        .from("Carrito")
+        .insert([carritoData])
+        .select()
+        .single();
+
+      if (errCarrito) {
+        console.error("❌ Error guardando carrito:", errCarrito);
+        alert("No se pudo guardar el carrito en la base de datos.");
+        return;
+      }
+
+      console.log("✅ Carrito creado con ID:", nuevoCarrito.id);
+
+      // 💾 3️⃣ Guardar el ID localmente (opcional)
+      await AsyncStorage.setItem("@cart_id", String(nuevoCarrito.id));
+
+      // 💰 4️⃣ Crear transacción en Webpay
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/webpay/init`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: carritoData.items.reduce((acc, i) => acc + i.precio * i.cantidad, 0),
+          sessionId: String(nuevoCarrito.id), // 🔑 usar el ID del carrito como sessionId
+          returnUrl: `${process.env.EXPO_PUBLIC_API_URL}/webpay/commit-mobile`,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Error iniciando pago");
+
+      const data = await res.json();
+      console.log("💳 Transacción creada en Webpay:", data);
+
+      // 🚀 5️⃣ Navegar a vista de pago
+      navigation.navigate("PagoView", {
+        paymentUrl: data.url,
+        token: data.token,
+      });
+
+    } catch (error) {
+      console.error("❌ Error en el pago:", error);
+      alert("Ocurrió un error al iniciar el pago.");
+    }
   };
+
 
   const renderCartItem = ({ item }: { item: CartItem }) => (
     <View className="flex-row items-center bg-[#9E8174] mb-1 rounded-lg overflow-hidden py-2">
@@ -159,7 +224,7 @@ function CartView() {
 
   return (
     <LayoutWithNavbar>
-      <ScrollView 
+      <ScrollView
         className="flex-1 bg-white px-4 py-4"
         contentContainerStyle={{ paddingBottom: 100 }}
       >
@@ -205,11 +270,10 @@ function CartView() {
               {/* Botón Retiro */}
               <TouchableOpacity
                 onPress={() => setTipoEntrega('retiro')}
-                className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${
-                  tipoEntrega === 'retiro'
-                    ? 'bg-bizcochito-red border-bizcochito-red'
-                    : 'bg-white border-gray-300'
-                }`}
+                className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${tipoEntrega === 'retiro'
+                  ? 'bg-bizcochito-red border-bizcochito-red'
+                  : 'bg-white border-gray-300'
+                  }`}
               >
                 <Ionicons
                   name={tipoEntrega === 'retiro' ? 'checkmark-circle' : 'ellipse-outline'}
@@ -217,9 +281,8 @@ function CartView() {
                   color={tipoEntrega === 'retiro' ? 'white' : '#9CA3AF'}
                 />
                 <Text
-                  className={`ml-2 font-bold text-base ${
-                    tipoEntrega === 'retiro' ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`ml-2 font-bold text-base ${tipoEntrega === 'retiro' ? 'text-white' : 'text-gray-700'
+                    }`}
                 >
                   Retiro en tienda
                 </Text>
@@ -228,11 +291,10 @@ function CartView() {
               {/* Botón Envío */}
               <TouchableOpacity
                 onPress={() => setTipoEntrega('envio')}
-                className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${
-                  tipoEntrega === 'envio'
-                    ? 'bg-bizcochito-red border-bizcochito-red'
-                    : 'bg-white border-gray-300'
-                }`}
+                className={`flex-1 flex-row items-center justify-center py-3 px-4 rounded-lg border-2 ${tipoEntrega === 'envio'
+                  ? 'bg-bizcochito-red border-bizcochito-red'
+                  : 'bg-white border-gray-300'
+                  }`}
               >
                 <Ionicons
                   name={tipoEntrega === 'envio' ? 'checkmark-circle' : 'ellipse-outline'}
@@ -240,9 +302,8 @@ function CartView() {
                   color={tipoEntrega === 'envio' ? 'white' : '#9CA3AF'}
                 />
                 <Text
-                  className={`ml-2 font-bold text-base ${
-                    tipoEntrega === 'envio' ? 'text-white' : 'text-gray-700'
-                  }`}
+                  className={`ml-2 font-bold text-base ${tipoEntrega === 'envio' ? 'text-white' : 'text-gray-700'
+                    }`}
                 >
                   Envío a domicilio
                 </Text>

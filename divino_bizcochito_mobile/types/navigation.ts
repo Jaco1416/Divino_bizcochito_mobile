@@ -41,6 +41,13 @@ export type RootStackParamList = {
     product?: ProductFromDB
   }
   Carrito: undefined
+  PagoView: {
+    paymentUrl: string;
+    token: string;
+  };
+  ResultadoPago: {
+    estado: string;
+  };
 }
 
 export type AppNavigation = NativeStackNavigationProp<RootStackParamList>

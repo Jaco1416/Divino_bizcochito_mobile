@@ -14,10 +14,11 @@ import RecetasView from './views/Recetas/RecetasView';
 import CrearRecetaView from './views/Recetas/CrearRecetaView';
 import DetalleRecetaView from './views/Recetas/DetalleRecetaView';
 import CatalogView from './views/Catalog/CatalogView';
-
 import type { RootStackParamList } from './types/navigation';
 import DetalleProducto from './views/Catalog/DetalleProducto';
 import CartView from './views/Cart/CartView';
+import PagoView from './views/Pago/PagoView';
+import ResultadoPagoView from './views/Result/ResultadoPagoView';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -42,6 +43,8 @@ export default function App() {
           <Stack.Screen name="DetalleProducto" component={DetalleProducto} />
           <Stack.Screen name="Catalogo" component={CatalogView} />
           <Stack.Screen name="Carrito" component={CartView} />
+          <Stack.Screen name="PagoView" component={PagoView} />
+          <Stack.Screen name="ResultadoPago" component={ResultadoPagoView} />
         </Stack.Navigator>
         <StatusBar style="auto" />
       </NavigationContainer>

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider } from './contexts/AuthContext';
@@ -19,10 +19,32 @@ import DetalleProducto from './views/Catalog/DetalleProducto';
 import CartView from './views/Cart/CartView';
 import PagoView from './views/Pago/PagoView';
 import ResultadoPagoView from './views/Result/ResultadoPagoView';
+import PedidoView from './views/Pedido/PedidoView';
+import { usePushNotifications } from './hooks/usePushNotifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+
+  usePushNotifications((token) => {
+    setExpoPushToken(token);
+  });
+
+  useEffect(() => {
+    if (expoPushToken) {
+      console.log("✅ Expo push token registrado:", expoPushToken);
+      // TODO: enviar token a tu backend si necesitas notificar al usuario
+    }
+  }, [expoPushToken]);
 
   return (
     <AuthProvider>
@@ -45,6 +67,7 @@ export default function App() {
           <Stack.Screen name="Carrito" component={CartView} />
           <Stack.Screen name="PagoView" component={PagoView} />
           <Stack.Screen name="ResultadoPago" component={ResultadoPagoView} />
+          <Stack.Screen name="PedidoDetalle" component={PedidoView} />
         </Stack.Navigator>
         <StatusBar style="auto" />
       </NavigationContainer>

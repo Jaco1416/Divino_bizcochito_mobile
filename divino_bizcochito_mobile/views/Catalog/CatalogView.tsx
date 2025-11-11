@@ -3,28 +3,19 @@ import { View, Text, FlatList, TouchableOpacity, ScrollView } from 'react-native
 import { useNavigation, useFocusEffect, NavigationProp } from '@react-navigation/native';
 import ProductCard from '../../components/ProductCard/ProductCard';
 import LayoutWithNavbar from '../../components/Layout/LayoutWithNavbar';
+import type { RootStackParamList } from '../../types/navigation';
 
 // Importar la variable de entorno
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 interface Product {
-    id: number;
+    id: string;
     nombre: string;
     precio: number;
     descripcion: string;
     imagen: string;
     categoriaId: number;
 }
-
-type RootStackParamList = {
-    Login: undefined;
-    Registro: undefined;
-    Home: undefined;
-    Profile: undefined;
-    DetalleProducto: {
-        id: number;
-    };
-};
 
 
 function CatalogView() {

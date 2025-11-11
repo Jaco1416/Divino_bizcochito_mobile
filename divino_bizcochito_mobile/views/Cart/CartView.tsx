@@ -19,7 +19,9 @@ interface CartItem {
   modificado: boolean;
   imagen?: string;
   topping?: string;
+  toppingId?: number;
   relleno?: string;
+  rellenoId?: number;
   mensajePersonalizado?: string;
 }
 
@@ -102,7 +104,12 @@ function CartView() {
     return tipoEntrega === 'envio' ? subtotal + ENVIO_COSTO : subtotal;
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async () => {
+    if (isSubmitting) return; // evita dobles envíos por taps repetidos
+    setIsSubmitting(true);
+
     try {
       // 🧩 1️⃣ Armar objeto del carrito
       const carritoData = {
@@ -158,6 +165,8 @@ function CartView() {
     } catch (error) {
       console.error("❌ Error en el pago:", error);
       alert("Ocurrió un error al iniciar el pago.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -247,7 +256,7 @@ function CartView() {
           <FlatList
             data={cartItems}
             renderItem={renderCartItem}
-            keyExtractor={(item) => item.id.toString()}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             scrollEnabled={false}
           />
         )}
@@ -399,10 +408,13 @@ function CartView() {
         {cartItems.length > 0 && (
           <TouchableOpacity
             onPress={handleSubmit}
-            className="bg-bizcochito-red rounded-lg py-4 items-center"
+            disabled={isSubmitting}
+            className={`bg-bizcochito-red rounded-lg py-4 items-center ${isSubmitting ? 'opacity-60' : ''}`}
             activeOpacity={0.8}
           >
-            <Text className="text-white text-lg font-bold">Ir a pagar</Text>
+            <Text className="text-white text-lg font-bold">
+              {isSubmitting ? 'Procesando...' : 'Ir a pagar'}
+            </Text>
           </TouchableOpacity>
         )}
       </ScrollView>

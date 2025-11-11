@@ -92,7 +92,7 @@ function ProfileView() {
             }
           />
         </View>
-        <PedidosTable pedidos={pedidos} onVerDetalle={(id) => { }} />
+        <PedidosTable pedidos={pedidos} onVerDetalle={(id) => {navigation.navigate("PedidoDetalle", { id }); }} />
       </ScrollView>
     </LayoutWithNavbar>
   )

@@ -50,7 +50,9 @@ interface CartItem {
   precio: number;
   modificado: boolean;
   topping?: string;
+  toppingId?: number;
   relleno?: string;
+  rellenoId?: number;
   mensajePersonalizado?: string;
   imagen?: string;
 }
@@ -223,7 +225,9 @@ export default function DetalleProductoView() {
         precio: product.precio,
         modificado,
         topping: toppingName,
+        toppingId: selectedTopping ?? undefined,
         relleno: rellenoName,
+        rellenoId: selectedRelleno ?? undefined,
         mensajePersonalizado: mensajePersonalizado.trim() || undefined,
         imagen: product.imagen,
       };

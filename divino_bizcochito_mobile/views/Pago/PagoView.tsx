@@ -1,15 +1,15 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { WebView } from "react-native-webview";
 
 export default function PagoView({ route, navigation }: any) {
   const { paymentUrl, token } = route.params;
   const [loading, setLoading] = useState(false);
-  const [hasCommitted, setHasCommitted] = useState(false); // 👈 evita doble commit
+  const hasCommittedRef = useRef(false); // 👈 evita doble commit sincronizando en la misma render
 
   const handlePaymentResult = async () => {
-    if (hasCommitted) return; // 🚫 Evita commit duplicado
-    setHasCommitted(true);
+    if (hasCommittedRef.current) return; // 🚫 Evita commit duplicado
+    hasCommittedRef.current = true;
 
     try {
       setLoading(true);
@@ -33,6 +33,14 @@ export default function PagoView({ route, navigation }: any) {
     }
   };
 
+  const handleShouldStartLoad = (request: any) => {
+    if (request.url.includes("/webpay/commit-mobile")) {
+      handlePaymentResult();
+      return false; // evitamos que WebView haga el request (ya lo manejamos manualmente)
+    }
+    return true;
+  };
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center">
@@ -45,14 +53,7 @@ export default function PagoView({ route, navigation }: any) {
     <WebView
       source={{ uri: `${paymentUrl}?token_ws=${token}` }}
       style={{ flex: 1 }}
-      onNavigationStateChange={(navState) => {
-        if (
-          navState.url.includes("/webpay/commit-mobile") &&
-          !hasCommitted
-        ) {
-          handlePaymentResult();
-        }
-      }}
+      onShouldStartLoadWithRequest={handleShouldStartLoad}
     />
   );
 }

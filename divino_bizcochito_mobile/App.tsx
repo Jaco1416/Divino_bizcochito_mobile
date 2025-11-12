@@ -21,13 +21,15 @@ import PagoView from './views/Pago/PagoView';
 import ResultadoPagoView from './views/Result/ResultadoPagoView';
 import PedidoView from './views/Pedido/PedidoView';
 import { usePushNotifications } from './hooks/usePushNotifications';
+import { supabase } from './libs/supabaseClient';
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (): Promise<Notifications.NotificationBehavior> =>
+    ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    } as Notifications.NotificationBehavior),
 });
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -42,7 +44,41 @@ export default function App() {
   useEffect(() => {
     if (expoPushToken) {
       console.log("✅ Expo push token registrado:", expoPushToken);
-      // TODO: enviar token a tu backend si necesitas notificar al usuario
+      const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+      if (!API_URL) {
+        console.warn("⚠️ No se encontró EXPO_PUBLIC_API_URL, omitiendo registro del token.");
+        return;
+      }
+
+      const registerPushToken = async () => {
+        try {
+          const { data } = await supabase.auth.getSession();
+          const userId = data.session?.user?.id;
+
+          const response = await fetch(`${API_URL}/push/register`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              token: expoPushToken,
+              userId,
+            }),
+          });
+
+          if (!response.ok) {
+            const message = await response.text();
+            throw new Error(`HTTP ${response.status}: ${message}`);
+          }
+
+          console.log("📬 Token push sincronizado con el backend.");
+        } catch (error) {
+          console.error("❌ Error al enviar el token push al backend:", error);
+        }
+      };
+
+      registerPushToken();
     }
   }, [expoPushToken]);
 

@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "9f40a530-e759-49d6-ba5a-9a0809c6e184"
+      }
+    },
+    "android": {
+      "package": "divino.Bizcochito"
+    }
+  }
+}

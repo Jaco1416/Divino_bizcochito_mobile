@@ -47,7 +47,9 @@ export async function registerForPushNotificationsAsync() {
 
   const projectId =
     Constants?.expoConfig?.extra?.eas?.projectId ??
-    Constants?.easConfig?.projectId;
+    Constants?.easConfig?.projectId ??
+    process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+    "014dfe65-3188-4e00-878a-da4eeeb3f9a8";
 
   if (!projectId) {
     console.warn("⚠️ No se encontró projectId para obtener token push.");

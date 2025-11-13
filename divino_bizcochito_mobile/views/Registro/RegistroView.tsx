@@ -2,12 +2,7 @@ import React from 'react'
 import RegisterCard from '../../components/RegisterCard/RegisterCard'
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-type RootStackParamList = {
-  Login: undefined;
-  Registro: undefined;
-  Home: undefined;
-};
+import type { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 

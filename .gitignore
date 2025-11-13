@@ -78,6 +78,9 @@ web_modules/
 .next
 out
 
+#google-services.json
+google-services.json
+
 # Nuxt.js build / generate output
 .nuxt
 dist

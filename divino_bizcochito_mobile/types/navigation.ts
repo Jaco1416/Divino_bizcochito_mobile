@@ -48,6 +48,9 @@ export type RootStackParamList = {
   ResultadoPago: {
     estado: string;
   };
+  PedidoDetalle: {
+    id: number | string;
+  };
 }
 
 export type AppNavigation = NativeStackNavigationProp<RootStackParamList>

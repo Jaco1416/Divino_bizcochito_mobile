@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { RootStackParamList } from "../../types/navigation"; // ajusta la ruta
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 
@@ -13,6 +14,12 @@ export default function ResultadoPagoView({ route }: any) {
     const navigation = useNavigation<NavigationProp>();
 
     const esExito = estado === "exito";
+
+    useEffect(() => {
+        if (esExito) {
+            AsyncStorage.removeItem('@cart_items');
+        }
+    }, [esExito]);
 
     return (
         <View className="flex-1 justify-center items-center p-6 bg-gray-100">

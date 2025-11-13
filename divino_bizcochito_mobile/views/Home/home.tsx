@@ -6,6 +6,7 @@ import ProductCard from '../../components/ProductCard/ProductCard';
 import RecipeCard from '../../components/RecipeCard/RecipeCard';
 import LayoutWithNavbar from '../../components/Layout/LayoutWithNavbar';
 import AboutUs from '../../components/AboutUs/AboutUs';
+import type { RootStackParamList } from '../../types/navigation';
 
 
 // Importar la variable de entorno
@@ -16,16 +17,6 @@ const pastelCarousel1 = require('../../assets/pastel_carousel_1.png');
 const pastelCarousel2 = require('../../assets/pastel_carousel_2.png');
 const pastelCarousel3 = require('../../assets/pastel_carousel_3.png');
 const pastelCarousel4 = require('../../assets/pastel_carousel_4.png');
-
-type RootStackParamList = {
-  Login: undefined;
-  Registro: undefined;
-  Home: undefined;
-  Profile: undefined;
-  DetalleProducto: {
-    id: number;
-  };
-};
 
 function Home() {
 

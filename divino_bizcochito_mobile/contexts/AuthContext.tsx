@@ -168,7 +168,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error };
       }
 
-      console.log("✅ Sesión iniciada:", data);
       return { error: null };
     } catch (error) {
       console.error("❌ Error inesperado:", error);

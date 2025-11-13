@@ -3,12 +3,7 @@ import LoginCard from '../../components/LoginCard/LoginCard'
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../contexts/AuthContext';
-
-type RootStackParamList = {
-  Login: undefined;
-  Registro: undefined;
-  Home: undefined;
-};
+import type { RootStackParamList } from '../../types/navigation';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 

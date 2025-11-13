@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "404923659591",
+    "project_id": "divino-bizcochito",
+    "storage_bucket": "divino-bizcochito.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:404923659591:android:47dc1ebfc02ec01657c862",
+        "android_client_info": {
+          "package_name": "com.divinobizcochito.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnakamAcUOW_vPWArXgp9r_HrTMPSEHAw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

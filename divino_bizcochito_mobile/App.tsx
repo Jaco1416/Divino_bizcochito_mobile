@@ -22,6 +22,7 @@ import ResultadoPagoView from './views/Result/ResultadoPagoView';
 import PedidoView from './views/Pedido/PedidoView';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { supabase } from './libs/supabaseClient';
+import type { Session } from '@supabase/supabase-js';
 
 Notifications.setNotificationHandler({
   handleNotification: async (): Promise<Notifications.NotificationBehavior> =>
@@ -36,10 +37,28 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   usePushNotifications((token) => {
     setExpoPushToken(token);
   });
+
+  useEffect(() => {
+    const initializeSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session ?? null);
+    };
+
+    initializeSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (expoPushToken) {
@@ -51,10 +70,14 @@ export default function App() {
         return;
       }
 
+      if (!session) {
+        console.log('⏳ Token pendiente de sincronizar hasta que exista una sesión.');
+        return;
+      }
+
       const registerPushToken = async () => {
         try {
-          const { data } = await supabase.auth.getSession();
-          const userId = data.session?.user?.id;
+          const userId = session.user.id;
 
           const response = await fetch(`${API_URL}/push/register`, {
             method: "POST",
@@ -80,7 +103,7 @@ export default function App() {
 
       registerPushToken();
     }
-  }, [expoPushToken]);
+  }, [expoPushToken, session]);
 
   return (
     <AuthProvider>

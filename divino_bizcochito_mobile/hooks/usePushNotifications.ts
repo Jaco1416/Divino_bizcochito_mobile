@@ -71,8 +71,8 @@ export function usePushNotifications(
   onToken?: TokenCallback,
   onResponse?: ResponseCallback
 ) {
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
 
   useEffect(() => {
     let mounted = true;

@@ -19,14 +19,14 @@
       }
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.divinobizcochito.mobile",
-      "useNextNotificationsApi": true
+      "package": "com.divinobizcochito.mobile"
     },
     "web": {
       "favicon": "./assets/favicon.png",

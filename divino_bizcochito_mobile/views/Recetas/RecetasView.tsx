@@ -9,7 +9,6 @@ import {
   RefreshControl,
   TouchableOpacity,
   BackHandler,
-  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
@@ -41,6 +40,24 @@ function normalizeRecipe(raw: any, idx: number): RecipeFromDB {
     ingredientes: raw?.ingredientes ?? null,
     pasos: raw?.pasos ?? null,
   };
+}
+
+// Detecta si un objeto raw indica que la receta está publicada.
+// Acepta string "publicada"/"publicado" (case-insensitive), boolean true o number 1.
+function isPublishedRaw(raw: any): boolean {
+  if (!raw) return false;
+  const estado = raw.estado;
+  if (estado == null) return false;
+
+  if (typeof estado === "boolean") return estado === true;
+  if (typeof estado === "number") return estado === 1;
+
+  if (typeof estado === "string") {
+    const lv = estado.trim().toLowerCase();
+    return lv === "publicada" || lv === "publicado" || lv === "published" || lv === "true" || lv === "1";
+  }
+
+  return false;
 }
 
 export default function RecetasView() {
@@ -81,7 +98,13 @@ export default function RecetasView() {
       const rawArr = Array.isArray(data)
         ? data
         : data?.data ?? data?.items ?? data?.rows ?? [];
-      const arr = rawArr.map((r: any, i: number) => normalizeRecipe(r, i));
+
+      // Filtrar solo recetas con estado = 'publicada' (o equivalentes)
+      const publishedRaw = (rawArr || []).filter((r: any) => isPublishedRaw(r));
+
+      // Normalizar solo las recetas publicadas
+      const arr = publishedRaw.map((r: any, i: number) => normalizeRecipe(r, i));
+
       setAllRecipes(arr);
       setCurrentPage(1);
     } catch (e: any) {
@@ -115,7 +138,6 @@ export default function RecetasView() {
     React.useCallback(() => {
       if (!lockBack) return;
 
-      // Suscribirse y remover con .remove() en cleanup (API moderna)
       const sub = BackHandler.addEventListener("hardwareBackPress", () => {
         // Consumir el evento: no hacer pop
         return true;
@@ -213,7 +235,7 @@ export default function RecetasView() {
       <LayoutWithNavbar>
         <View className="px-4 pt-4">
           <Text className="text-bizcochito-red text-xl font-bold mb-1 mt-6 text-center">
-            Todas las recetas
+            Recetas publicadas
           </Text>
           {!!error && (
             <Text className="text-center text-red-600 text-sm mb-2">
@@ -239,7 +261,7 @@ export default function RecetasView() {
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-10">
               <Text className="text-gray-500">
-                {loading ? "Cargando recetas..." : "No hay recetas disponibles."}
+                {loading ? "Cargando recetas..." : "No hay recetas publicadas."}
               </Text>
             </View>
           }

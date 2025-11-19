@@ -1,46 +1,67 @@
-﻿import React from "react";
+﻿import React, { useCallback } from "react";
 import { View, Text, FlatList, Image, TouchableOpacity, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
+
+const CART_STORAGE_KEY = "@cart_items";
 
 interface DatosEnvio {
-    nombre: string;
-    correo: string;
-    direccion: string;
-    comentarios?: string;
+  nombre: string;
+  correo: string;
+  direccion: string;
+  comentarios?: string;
 }
 
 interface DetallePedido {
-    id: number;
-    cantidad: number;
-    precioUnitario: number;
-    nombreProducto: string;
-    imagenProducto: string | null;
-    toppingId: number | null;
-    rellenoId: number | null;
+  id: number;                 // id de la fila de detalle
+  productoId?: number;        // FK al producto (si tu consulta lo trae, lo usamos)
+  cantidad: number;
+  precioUnitario: number;
+  nombreProducto: string;
+  imagenProducto: string | null;
+  toppingId: number | null;
+  rellenoId: number | null;
 }
 
 interface Pedido {
-    id: number;
-    tipoEntrega: string;
-    datosEnvio: DatosEnvio | null;
-    estado: string;
-    fechaCreacion: string;
-    fechaEntrega: string | null;
-    total: number;
-    perfil?: { nombre: string };
-    detalle_pedido: DetallePedido[];
+  id: number;
+  tipoEntrega: string;
+  datosEnvio: DatosEnvio | null;
+  estado: string;
+  fechaCreacion: string;
+  fechaEntrega: string | null;
+  total: number;
+  perfil?: { nombre: string };
+  detalle_pedido: DetallePedido[];
 }
 
 interface PedidoDetailProps {
-    pedido: Pedido;
-    onCancelar?: () => Promise<void>;
-    onVolver: () => void;
+  pedido: Pedido;
+  onCancelar?: () => Promise<void>;
+  onVolver: () => void;
+}
+
+interface CartItem {
+  id: number;                     // en tu carrito usas "id" (no productId)
+  nombre: string;
+  cantidad: number;
+  precio: number;
+  modificado: boolean;
+  topping?: string;
+  toppingId?: number;
+  relleno?: string;
+  rellenoId?: number;
+  mensajePersonalizado?: string;
+  imagen?: string | null;
 }
 
 export default function PedidoDetail({
-    pedido,
-    onCancelar,
-    onVolver,
+  pedido,
+  onCancelar,
+  onVolver,
 }: PedidoDetailProps) {
+  const navigation = useNavigation();
+
   const handleCancelar = async () => {
     if (!onCancelar) return;
     Alert.alert(
@@ -62,6 +83,55 @@ export default function PedidoDetail({
       ]
     );
   };
+
+  // Botón "Volver a pedir": agrega TODOS los items del detalle al carrito
+  const volverAPedir = useCallback(async () => {
+    try {
+      const detalle = Array.isArray(pedido.detalle_pedido) ? pedido.detalle_pedido : [];
+
+      if (detalle.length === 0) {
+        Alert.alert("Sin items", "Este pedido no contiene productos para volver a pedir.");
+        return;
+      }
+
+      // Obtener carrito actual
+      const cartData = await AsyncStorage.getItem(CART_STORAGE_KEY);
+      const currentCart: CartItem[] = cartData ? JSON.parse(cartData) : [];
+
+      // Mapear cada fila de detalle a CartItem con el mismo shape de DetalleProductoView
+      const nuevosItems: CartItem[] = detalle.map((row) => {
+        const modificado = !!(row.toppingId || row.rellenoId);
+        return {
+          id: row.productoId ?? row.id,            // usamos productoId si viene, si no el id de la fila
+          nombre: row.nombreProducto,
+          cantidad: row.cantidad || 1,
+          precio: row.precioUnitario || 0,
+          modificado,
+          toppingId: row.toppingId || undefined,
+          rellenoId: row.rellenoId || undefined,
+          // nombres de topping/relleno no están en la fila; si los necesitas, habría que resolverlos aparte
+          imagen: row.imagenProducto || null,
+        };
+      });
+
+      // Concatenar como ítems separados (misma política que en DetalleProductoView)
+      const updatedCart = [...currentCart, ...nuevosItems];
+      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updatedCart));
+
+      Alert.alert(
+        "Pedido agregado",
+        "Los productos del pedido se agregaron al carrito.",
+        [
+          { text: "Seguir viendo", style: "cancel" },
+          { text: "Ir al carrito", onPress: () => navigation.navigate("Carrito" as never) },
+        ]
+      );
+    } catch (e) {
+      console.error("❌ Error al volver a pedir:", e);
+      Alert.alert("Error", "No se pudo agregar el contenido del pedido al carrito.");
+    }
+  }, [pedido, navigation]);
+
   const renderProducto = ({ item }: { item: DetallePedido }) => (
     <View className="flex-row bg-white p-3 rounded-xl mb-3 shadow-sm border border-gray-100">
       {item.imagenProducto && (
@@ -83,9 +153,7 @@ export default function PedidoDetail({
             Relleno: <Text className="font-medium">{item.rellenoId}</Text>
           </Text>
         )}
-        <Text className="text-gray-700 text-sm mt-1">
-          Cantidad: {item.cantidad}
-        </Text>
+        <Text className="text-gray-700 text-sm mt-1">Cantidad: {item.cantidad}</Text>
         <Text className="text-[#8B2E2E] font-semibold text-sm">
           ${(item.precioUnitario || 0).toLocaleString("es-CL")}
         </Text>
@@ -95,24 +163,40 @@ export default function PedidoDetail({
 
   return (
     <View className="flex-1 bg-[#FDF7F7] p-5 pb-32">
-      {/* Botones - posicionado encima de la barra de navegación */}
+      {/* Barra inferior de acciones */}
       <View className="absolute bottom-20 left-5 right-5 z-10">
         <View className="flex-row gap-3">
+          {/* Cancelar pedido (condicional) */}
           {onCancelar && pedido.estado !== "Entregado" && (
             <TouchableOpacity
               onPress={handleCancelar}
               className="flex-1 bg-red-600 py-3 rounded-xl"
+              activeOpacity={0.85}
             >
               <Text className="text-white text-center font-semibold text-base">
                 Cancelar pedido
               </Text>
             </TouchableOpacity>
           )}
+
+          {/* Volver a pedir (siempre visible) */}
+          <TouchableOpacity
+            onPress={volverAPedir}
+            className="flex-1 bg-bizcochito-red py-3 rounded-xl"
+            activeOpacity={0.85}
+          >
+            <Text className="text-white text-center font-semibold text-base">
+              Volver a pedir
+            </Text>
+          </TouchableOpacity>
+
+          {/* Volver al historial */}
           <TouchableOpacity
             onPress={onVolver}
-            className={`py-3 rounded-xl ${onCancelar && pedido.estado !== "Entregado" ? "flex-1 bg-[#8B2E2E]" : "bg-[#8B2E2E]"}`}
+            className="flex-1 bg-[#8B2E2E] py-3 rounded-xl"
+            activeOpacity={0.85}
           >
-            <Text className="text-white text-center font-semibold text-base ml-2 mr-2">
+            <Text className="text-white text-center font-semibold text-base">
               Volver al historial
             </Text>
           </TouchableOpacity>
@@ -147,7 +231,14 @@ export default function PedidoDetail({
           </Text>
         </View>
         <Text className="text-left font-bold text-gray-700 text-sm">
-          Fecha: <Text className="font-normal text-gray-600">{new Date(pedido.fechaCreacion).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</Text>
+          Fecha:{" "}
+          <Text className="font-normal text-gray-600">
+            {new Date(pedido.fechaCreacion).toLocaleDateString("es-ES", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
+          </Text>
         </Text>
       </View>
 
@@ -161,12 +252,9 @@ export default function PedidoDetail({
 
       {/* Información de entrega */}
       <View className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mt-4 mb-2">
-        <Text className="font-bold text-[#8B2E2E] text-lg mb-2">
-          Información del pedido
-        </Text>
+        <Text className="font-bold text-[#8B2E2E] text-lg mb-2">Información del pedido</Text>
         <Text className="text-gray-700">
-          Tipo de entrega:{" "}
-          <Text className="font-medium capitalize">{pedido.tipoEntrega}</Text>
+          Tipo de entrega: <Text className="font-medium capitalize">{pedido.tipoEntrega}</Text>
         </Text>
 
         {pedido.tipoEntrega === "envio" && pedido.datosEnvio && (
@@ -182,8 +270,7 @@ export default function PedidoDetail({
             </Text>
             {pedido.datosEnvio.comentarios ? (
               <Text className="text-gray-700">
-                Comentarios:{" "}
-                <Text className="font-medium">{pedido.datosEnvio.comentarios}</Text>
+                Comentarios: <Text className="font-medium">{pedido.datosEnvio.comentarios}</Text>
               </Text>
             ) : null}
           </>

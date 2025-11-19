@@ -10,13 +10,28 @@ import type { RootStackParamList } from '../../types/navigation';
 
 
 // Importar la variable de entorno
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = "https://divino-bizcochito-web.vercel.app/api";
 
 // Importar las imágenes del carousel
 const pastelCarousel1 = require('../../assets/pastel_carousel_1.png');
 const pastelCarousel2 = require('../../assets/pastel_carousel_2.png');
 const pastelCarousel3 = require('../../assets/pastel_carousel_3.png');
 const pastelCarousel4 = require('../../assets/pastel_carousel_4.png');
+
+function isPublishedRaw(raw: any): boolean {
+    if (!raw) return false;
+    const estado = raw?.estado;
+    if (estado == null) return false;
+
+    if (typeof estado === "boolean") return estado === true;
+    if (typeof estado === "number") return estado === 1;
+
+    if (typeof estado === "string") {
+        const lv = estado.trim().toLowerCase();
+        return lv === "publicada" || lv === "publicado" || lv === "published" || lv === "true" || lv === "1";
+    }
+    return false;
+}
 
 function Home() {
 
@@ -40,6 +55,9 @@ function Home() {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
+            if (!responseRecetas.ok) {
+                throw new Error(`HTTP error! recetas status: ${responseRecetas.status}`);
+            }
 
             const data = await response.json();
             const recetasData = await responseRecetas.json();
@@ -49,8 +67,16 @@ function Home() {
                 .sort((a: any, b: any) => (b.ventas || 0) - (a.ventas || 0))
                 .slice(0, 3);
 
-            // Tomar solo las 3 primeras recetas
-            const topThreeRecipes = recetasData.slice(0, 3);
+            // Normalizar posible estructura y filtrar solo recetas publicadas
+            const rawRecetas = Array.isArray(recetasData)
+                ? recetasData
+                : recetasData?.data ?? recetasData?.items ?? recetasData?.rows ?? [];
+
+            // Aquí se filtran SOLO las recetas publicadas
+            const publishedRecetas = (rawRecetas || []).filter((r: any) => isPublishedRaw(r));
+
+            // Tomar solo las 3 primeras recetas publicadas
+            const topThreeRecipes = publishedRecetas.slice(0, 3);
 
             setBestSellingProducts(topThree);
             setRecipes(topThreeRecipes);

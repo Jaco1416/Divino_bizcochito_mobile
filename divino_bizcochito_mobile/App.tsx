@@ -7,7 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthProvider } from './contexts/AuthContext';
 import "./global.css"
 import LoginView from './views/Login/LoginView';
-import Home from './views/Home/Home';
+import Home from './views/Home/home';
 import RegistroView from './views/Registro/RegistroView';
 import ProfileView from './views/Profile/ProfileView';
 import RecetasView from './views/Recetas/RecetasView';

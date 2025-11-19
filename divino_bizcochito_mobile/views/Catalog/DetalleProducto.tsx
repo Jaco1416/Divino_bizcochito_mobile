@@ -11,7 +11,7 @@ import {
   Alert,
   TextInput,
 } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import LayoutWithNavbar from "../../components/Layout/LayoutWithNavbar";
 import { useRoute, useNavigation, useFocusEffect, RouteProp } from "@react-navigation/native";
 
@@ -19,7 +19,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const PRODUCTS_PATH = "productos";
 const TOPPINGS_PATH = "toppings";
 const RELLENOS_PATH = "relleno";
-const CART_STORAGE_KEY = '@cart_items';
+const CART_STORAGE_KEY = "@cart_items";
 
 interface Product {
   id: number;
@@ -33,15 +33,8 @@ interface Product {
   rellenoId?: number;
 }
 
-interface Topping {
-  id: number;
-  nombre: string;
-}
-
-interface Relleno {
-  id: number;
-  nombre: string;
-}
+interface Topping { id: number; nombre: string; }
+interface Relleno { id: number; nombre: string; }
 
 interface CartItem {
   id: number;
@@ -55,16 +48,14 @@ interface CartItem {
   rellenoId?: number;
   mensajePersonalizado?: string;
   imagen?: string;
+  variantKey: string;
 }
 
 type RootStackParamList = {
-  DetalleProducto: {
-    id: number;
-    product?: Product;
-  };
+  DetalleProducto: { id: number; product?: Product; };
 };
 
-type DetalleProductoRouteProp = RouteProp<RootStackParamList, 'DetalleProducto'>;
+type DetalleProductoRouteProp = RouteProp<RootStackParamList, "DetalleProducto">;
 
 export default function DetalleProductoView() {
   const route = useRoute<DetalleProductoRouteProp>();
@@ -78,27 +69,25 @@ export default function DetalleProductoView() {
   const [selectedTopping, setSelectedTopping] = useState<number | null>(null);
   const [selectedRelleno, setSelectedRelleno] = useState<number | null>(null);
   const [cantidad, setCantidad] = useState<number>(1);
-  const [mensajePersonalizado, setMensajePersonalizado] = useState<string>('');
+  const [mensajePersonalizado, setMensajePersonalizado] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(!passed);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const formatPrice = (price: number) => {
-    if (!price && price !== 0) return '$0';
-    return `$${price.toLocaleString('es-CL')}`;
-  };
+  const formatPrice = (price: number) => `$${(price ?? 0).toLocaleString("es-CL")}`;
+  const incrementarCantidad = () => setCantidad((p) => p + 1);
+  const decrementarCantidad = () => setCantidad((p) => (p > 1 ? p - 1 : 1));
+  const calcularTotal = () => (product ? product.precio * cantidad : 0);
 
-  const incrementarCantidad = () => {
-    setCantidad(prev => prev + 1);
-  };
-
-  const decrementarCantidad = () => {
-    setCantidad(prev => (prev > 1 ? prev - 1 : 1));
-  };
-
-  const calcularTotal = () => {
-    if (!product) return 0;
-    return product.precio * cantidad;
+  // Clave canónica
+  const canonicalVariantKey = (
+    id: number,
+    toppingId?: number | null,
+    rellenoId?: number | null,
+    mensaje?: string | null
+  ) => {
+    const msg = (mensaje ?? "").trim().toLowerCase();
+    return `${Number(id)}|t:${Number(toppingId ?? 0)}|r:${Number(rellenoId ?? 0)}|m:${msg}`;
   };
 
   const fetchProduct = useCallback(async () => {
@@ -110,16 +99,9 @@ export default function DetalleProductoView() {
       setError(null);
       setLoading(true);
       const url = `${API_URL}/${PRODUCTS_PATH}?id=${productId}`;
-      console.log('Fetching product from:', url);
       const res = await fetch(url);
-
-      if (!res.ok) {
-        console.error(`Error HTTP ${res.status} al obtener producto ${productId}`);
-        throw new Error(`HTTP ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      console.log('Producto obtenido:', data);
 
       const normalized: Product = {
         id: data?.id ?? productId,
@@ -134,17 +116,10 @@ export default function DetalleProductoView() {
       };
 
       setProduct(normalized);
-
-      // Set default selections from product
-      if (data?.toppingId) {
-        setSelectedTopping(data.toppingId);
-      }
-      if (data?.rellenoId) {
-        setSelectedRelleno(data.rellenoId);
-      }
-    } catch (e: any) {
-      console.error('Error al cargar producto:', e);
-      setError(`No se pudo cargar el producto (ID: ${productId}). Verifica que exista en la base de datos.`);
+      if (data?.toppingId) setSelectedTopping(data.toppingId);
+      if (data?.rellenoId) setSelectedRelleno(data.rellenoId);
+    } catch (e) {
+      setError(`No se pudo cargar el producto (ID: ${productId}).`);
     } finally {
       setLoading(false);
     }
@@ -153,40 +128,25 @@ export default function DetalleProductoView() {
   const fetchToppings = useCallback(async () => {
     if (!API_URL) return;
     try {
-      const url = `${API_URL}/${TOPPINGS_PATH}`;
-      console.log('Fetching toppings from:', url);
-      const res = await fetch(url);
+      const res = await fetch(`${API_URL}/${TOPPINGS_PATH}`);
       if (res.ok) {
         const data = await res.json();
-        console.log('Toppings obtenidos:', data);
-        setToppings(Array.isArray(data) ? data : []);
-      } else {
-        console.error(`Error HTTP ${res.status} al obtener toppings`);
+        setToppings(Array.isArray(data) ? data : data?.data ?? []);
       }
-    } catch (e) {
-      console.error('Error al cargar toppings:', e);
-    }
+    } catch {}
   }, [API_URL]);
 
   const fetchRellenos = useCallback(async () => {
     if (!API_URL) return;
     try {
-      const url = `${API_URL}/${RELLENOS_PATH}`;
-      console.log('Fetching rellenos from:', url);
-      const res = await fetch(url);
+      const res = await fetch(`${API_URL}/${RELLENOS_PATH}`);
       if (res.ok) {
         const data = await res.json();
-        console.log('Rellenos obtenidos:', data);
-        setRellenos(Array.isArray(data) ? data : []);
-      } else {
-        console.error(`Error HTTP ${res.status} al obtener rellenos`);
+        setRellenos(Array.isArray(data) ? data : data?.data ?? []);
       }
-    } catch (e) {
-      console.error('Error al cargar rellenos:', e);
-    }
+    } catch {}
   }, [API_URL]);
 
-  // Ejecutar fetch cuando la vista esté en foco
   useFocusEffect(
     useCallback(() => {
       if (!passed) fetchProduct();
@@ -195,60 +155,72 @@ export default function DetalleProductoView() {
     }, [passed, fetchProduct, fetchToppings, fetchRellenos])
   );
 
+  // Agregar al carrito (merge robusto con clave canónica)
   const addToCart = async () => {
     if (!product) return;
 
-    // Validar que las selecciones sean obligatorias
     if (!selectedTopping || !selectedRelleno) {
-      Alert.alert(
-        'Selección requerida',
-        'Debes seleccionar un topping y un relleno antes de agregar al carrito.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert("Selección requerida", "Debes seleccionar un topping y un relleno antes de agregar al carrito.", [{ text: "OK" }]);
       return;
     }
 
     try {
-      // Obtener carrito actual
       const cartData = await AsyncStorage.getItem(CART_STORAGE_KEY);
-      const currentCart: CartItem[] = cartData ? JSON.parse(cartData) : [];
+      const existing: CartItem[] = cartData ? JSON.parse(cartData) : [];
 
-      const toppingName = selectedTopping ? toppings.find(t => t.id === selectedTopping)?.nombre : undefined;
-      const rellenoName = selectedRelleno ? rellenos.find(r => r.id === selectedRelleno)?.nombre : undefined;
-      const modificado = !!(toppingName || rellenoName);
+      // Normalizar existentes a clave canónica y fusionar
+      const map = new Map<string, CartItem>();
+      for (const it of existing) {
+        const key = canonicalVariantKey(it.id, it.toppingId, it.rellenoId, it.mensajePersonalizado);
+        const prev = map.get(key);
+        if (prev) {
+          prev.cantidad += Number(it.cantidad) || 0;
+          if (!prev.topping && it.topping) prev.topping = it.topping;
+          if (!prev.relleno && it.relleno) prev.relleno = it.relleno;
+        } else {
+          map.set(key, { ...it, variantKey: key });
+        }
+      }
 
-      // Crear nuevo item (siempre como item separado)
-      const newItem: CartItem = {
-        id: product.id,
-        nombre: product.nombre,
-        cantidad: cantidad,
-        precio: product.precio,
-        modificado,
-        topping: toppingName,
-        toppingId: selectedTopping ?? undefined,
-        relleno: rellenoName,
-        rellenoId: selectedRelleno ?? undefined,
-        mensajePersonalizado: mensajePersonalizado.trim() || undefined,
-        imagen: product.imagen,
-      };
+      const toppingName = toppings.find((t) => t.id === selectedTopping)?.nombre;
+      const rellenoName = rellenos.find((r) => r.id === selectedRelleno)?.nombre;
+      const msg = (mensajePersonalizado || "").trim();
+      const key = canonicalVariantKey(product.id, selectedTopping, selectedRelleno, msg);
 
-      // Agregar al carrito (siempre como item separado)
-      const updatedCart = [...currentCart, newItem];
-      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(updatedCart));
+      const ex = map.get(key);
+      if (ex) {
+        ex.cantidad += cantidad;
+        if (!ex.topping && toppingName) ex.topping = toppingName;
+        if (!ex.relleno && rellenoName) ex.relleno = rellenoName;
+      } else {
+        map.set(key, {
+          id: product.id,
+          nombre: product.nombre,
+          cantidad,
+          precio: product.precio,
+          modificado: !!(toppingName || rellenoName || msg),
+          topping: toppingName,
+          toppingId: selectedTopping ?? undefined,
+          relleno: rellenoName,
+          rellenoId: selectedRelleno ?? undefined,
+          mensajePersonalizado: msg || undefined,
+          imagen: product.imagen,
+          variantKey: key,
+        });
+      }
+
+      await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(Array.from(map.values())));
 
       Alert.alert(
-        'Producto agregado',
+        "Producto agregado",
         `${product.nombre} se agregó al carrito correctamente.`,
         [
-          { text: 'Seguir comprando', style: 'cancel' },
-          { text: 'Ir al carrito', onPress: () => navigation.navigate('Carrito' as never) }
+          { text: "Seguir comprando", style: "cancel" },
+          { text: "Ir al carrito", onPress: () => navigation.navigate("Carrito" as never) },
         ]
       );
-
-      console.log('✅ Producto agregado al carrito:', newItem);
-    } catch (error) {
-      console.error('❌ Error al agregar al carrito:', error);
-      Alert.alert('Error', 'No se pudo agregar el producto al carrito');
+    } catch {
+      Alert.alert("Error", "No se pudo agregar el producto al carrito");
     }
   };
 
@@ -286,14 +258,10 @@ export default function DetalleProductoView() {
 
           {!loading && !error && product && (
             <View>
-              {/* Imagen del producto */}
+              {/* Imagen */}
               <View className="rounded-2xl overflow-hidden mb-5 bg-gray-100" style={{ height: 300 }}>
                 {product.imagen ? (
-                  <Image
-                    source={{ uri: product.imagen }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
+                  <Image source={{ uri: product.imagen }} className="w-full h-full" resizeMode="cover" />
                 ) : (
                   <View className="flex-1 items-center justify-center">
                     <Text className="text-gray-400">Sin imagen</Text>
@@ -301,106 +269,62 @@ export default function DetalleProductoView() {
                 )}
               </View>
 
-              {/* Nombre del producto */}
-              <Text className="text-3xl font-bold text-bizcochito-red mb-2">
-                {product.nombre}
-              </Text>
+              {/* Nombre y precio */}
+              <Text className="text-3xl font-bold text-bizcochito-red mb-2">{product.nombre}</Text>
+              <Text className="text-2xl font-bold text-gray-900 mb-4">{formatPrice(product.precio)}</Text>
 
-              {/* Precio */}
-              <Text className="text-2xl font-bold text-gray-900 mb-4">
-                {formatPrice(product.precio)}
-              </Text>
+              {!!product.categoriaId && <Text className="text-sm text-gray-600 mb-4">Categoría: {product.categoriaId}</Text>}
 
-              {/* Categoría */}
-              {!!product.categoriaId && (
-                <Text className="text-sm text-gray-600 mb-4">
-                  Categoría: {product.categoriaId}
-                </Text>
-              )}
-              {/* Descripción */}
               {!!product.descripcion && (
                 <View className="mb-6">
-                  <Text className="text-lg font-semibold text-bizcochito-red mb-2">
-                    Descripción
-                  </Text>
-                  <Text className="text-base text-gray-700 leading-relaxed">
-                    {product.descripcion}
-                  </Text>
+                  <Text className="text-lg font-semibold text-bizcochito-red mb-2">Descripción</Text>
+                  <Text className="text-base text-gray-700 leading-relaxed">{product.descripcion}</Text>
                 </View>
               )}
-              {/* Selector de Topping */}
+
+              {/* Toppings */}
               <View className="mb-6">
-                <Text className="text-lg font-semibold text-bizcochito-red mb-3">
-                  Selecciona un Topping (Requerido)
-                </Text>
+                <Text className="text-lg font-semibold text-bizcochito-red mb-3">Selecciona un Topping (Requerido)</Text>
                 {toppings.length === 0 ? (
-                  <Text className="text-gray-500 italic">
-                    Cargando toppings... (Total: {toppings.length})
-                  </Text>
+                  <Text className="text-gray-500 italic">Cargando toppings...</Text>
                 ) : (
                   <View className="flex-row flex-wrap gap-2">
-                    {toppings.map((topping) => (
+                    {toppings.map((t) => (
                       <TouchableOpacity
-                        key={topping.id}
-                        onPress={() => setSelectedTopping(topping.id)}
-                        className={`px-4 py-2 rounded-full border-2 ${selectedTopping === topping.id
-                            ? 'bg-bizcochito-red border-bizcochito-red'
-                            : 'bg-white border-gray-300'
-                          }`}
+                        key={t.id}
+                        onPress={() => setSelectedTopping(t.id)}
+                        className={`px-4 py-2 rounded-full border-2 ${selectedTopping === t.id ? "bg-bizcochito-red border-bizcochito-red" : "bg-white border-gray-300"}`}
                       >
-                        <Text
-                          className={`font-semibold ${selectedTopping === topping.id
-                              ? 'text-white'
-                              : 'text-gray-700'
-                            }`}
-                        >
-                          {topping.nombre}
-                        </Text>
+                        <Text className={`font-semibold ${selectedTopping === t.id ? "text-white" : "text-gray-700"}`}>{t.nombre}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
               </View>
 
-              {/* Selector de Relleno */}
+              {/* Rellenos */}
               <View className="mb-6">
-                <Text className="text-lg font-semibold text-bizcochito-red mb-3">
-                  Selecciona un Relleno (Requerido)
-                </Text>
+                <Text className="text-lg font-semibold text-bizcochito-red mb-3">Selecciona un Relleno (Requerido)</Text>
                 {rellenos.length === 0 ? (
-                  <Text className="text-gray-500 italic">
-                    Cargando rellenos... (Total: {rellenos.length})
-                  </Text>
+                  <Text className="text-gray-500 italic">Cargando rellenos...</Text>
                 ) : (
                   <View className="flex-row flex-wrap gap-2">
-                    {rellenos.map((relleno) => (
+                    {rellenos.map((r) => (
                       <TouchableOpacity
-                        key={relleno.id}
-                        onPress={() => setSelectedRelleno(relleno.id)}
-                        className={`px-4 py-2 rounded-full border-2 ${selectedRelleno === relleno.id
-                            ? 'bg-bizcochito-red border-bizcochito-red'
-                            : 'bg-white border-gray-300'
-                          }`}
+                        key={r.id}
+                        onPress={() => setSelectedRelleno(r.id)}
+                        className={`px-4 py-2 rounded-full border-2 ${selectedRelleno === r.id ? "bg-bizcochito-red border-bizcochito-red" : "bg-white border-gray-300"}`}
                       >
-                        <Text
-                          className={`font-semibold ${selectedRelleno === relleno.id
-                              ? 'text-white'
-                              : 'text-gray-700'
-                            }`}
-                        >
-                          {relleno.nombre}
-                        </Text>
+                        <Text className={`font-semibold ${selectedRelleno === r.id ? "text-white" : "text-gray-700"}`}>{r.nombre}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
               </View>
 
-              {/* Mensaje Personalizado */}
+              {/* Mensaje */}
               <View className="mb-6">
-                <Text className="text-lg font-semibold text-bizcochito-red mb-3">
-                  Mensaje personalizado
-                </Text>
+                <Text className="text-lg font-semibold text-bizcochito-red mb-3">Mensaje personalizado</Text>
                 <TextInput
                   value={mensajePersonalizado}
                   onChangeText={setMensajePersonalizado}
@@ -418,48 +342,26 @@ export default function DetalleProductoView() {
               <View className="mb-6">
                 <View className="flex-row justify-between items-center">
                   <View>
-                    <Text className="text-lg font-semibold text-gray-800 mb-2">
-                      Cantidad
-                    </Text>
+                    <Text className="text-lg font-semibold text-gray-800 mb-2">Cantidad</Text>
                     <View className="flex-row items-center">
-                      <TouchableOpacity
-                        onPress={decrementarCantidad}
-                        className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center"
-                        activeOpacity={0.7}
-                      >
+                      <TouchableOpacity onPress={decrementarCantidad} className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center" activeOpacity={0.7}>
                         <Text className="text-xl font-bold text-gray-700">−</Text>
                       </TouchableOpacity>
-                      <Text className="text-2xl font-bold text-gray-800 mx-6">
-                        {cantidad}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={incrementarCantidad}
-                        className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center"
-                        activeOpacity={0.7}
-                      >
+                      <Text className="text-2xl font-bold text-gray-800 mx-6">{cantidad}</Text>
+                      <TouchableOpacity onPress={incrementarCantidad} className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center" activeOpacity={0.7}>
                         <Text className="text-xl font-bold text-gray-700">+</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                   <View className="items-end">
-                    <Text className="text-lg font-semibold text-bizcochito-red">
-                      Total: {formatPrice(calcularTotal())}
-                    </Text>
+                    <Text className="text-lg font-semibold text-bizcochito-red">Total: {formatPrice(calcularTotal())}</Text>
                   </View>
                 </View>
               </View>
 
-
-
-              {/* Botón de agregar pedido */}
-              <TouchableOpacity
-                onPress={addToCart}
-                className="bg-bizcochito-red rounded-full py-4 items-center mt-4"
-                activeOpacity={0.8}
-              >
-                <Text className="text-white text-lg font-semibold">
-                  Agregar pedido
-                </Text>
+              {/* Botón agregar */}
+              <TouchableOpacity onPress={addToCart} className="bg-bizcochito-red rounded-full py-4 items-center mt-4" activeOpacity={0.8}>
+                <Text className="text-white text-lg font-semibold">Agregar pedido</Text>
               </TouchableOpacity>
             </View>
           )}

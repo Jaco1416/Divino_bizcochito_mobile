@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,7 +8,6 @@ interface ProfileCardProps {
   onEditPress?: () => void;
 }
 
-
 type RootStackParamList = {
   Login: undefined;
   Registro: undefined;
@@ -16,9 +15,68 @@ type RootStackParamList = {
   Profile: undefined;
 };
 
+// Usa la misma base de API que el resto de la app
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://divino-bizcochito-web.vercel.app/api';
+const RECIPES_PATH = 'recetas';
+
+// Normaliza respuesta de la API a arreglo
+function normalizeArray(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  return data?.data ?? data?.items ?? data?.rows ?? [];
+}
+
 export default function ProfileCard({ onEditPress }: ProfileCardProps) {
   const { user, perfil, handleLogout } = useAuth();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const [recipesCount, setRecipesCount] = useState<number>(0);
+  const [loadingRecipes, setLoadingRecipes] = useState<boolean>(false);
+  const [errorRecipes, setErrorRecipes] = useState<boolean>(false);
+
+  const fetchUserRecipesCount = useCallback(async () => {
+    const autorId = perfil?.id; // uuid del perfil
+    if (!autorId || !API_URL) {
+      setRecipesCount(0);
+      return;
+    }
+
+    setLoadingRecipes(true);
+    setErrorRecipes(false);
+
+    try {
+      // 1) Intentar endpoint con filtro por autorId
+      const urlByAuthor = `${API_URL}/${RECIPES_PATH}?autorId=${encodeURIComponent(String(autorId))}`;
+      let res = await fetch(urlByAuthor);
+
+      if (res.ok) {
+        const data = await res.json();
+        const arr = normalizeArray(data);
+        // IMPORTANTE: SIEMPRE filtrar localmente por autorId (por si el backend ignora el query param)
+        const own = (arr || []).filter((r: any) => String(r?.autorId) === String(autorId));
+        setRecipesCount(own.length);
+        setLoadingRecipes(false);
+        return;
+      }
+
+      // 2) Fallback: traer todas y filtrar localmente
+      res = await fetch(`${API_URL}/${RECIPES_PATH}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const dataAll = await res.json();
+      const all = normalizeArray(dataAll);
+      const own = (all || []).filter((r: any) => String(r?.autorId) === String(autorId));
+      setRecipesCount(own.length);
+    } catch (e) {
+      console.warn('Error obteniendo recetas del usuario:', e);
+      setErrorRecipes(true);
+      setRecipesCount(0);
+    } finally {
+      setLoadingRecipes(false);
+    }
+  }, [perfil?.id]);
+
+  useEffect(() => {
+    fetchUserRecipesCount();
+  }, [fetchUserRecipesCount]);
 
   const handleLogoutPress = async () => {
     try {
@@ -70,9 +128,14 @@ export default function ProfileCard({ onEditPress }: ProfileCardProps) {
         </Text>
       </View>
 
-      {/* Contador de recetas */}
+      {/* Contador de recetas (todas del autor, para que coincida con "Mis Recetas") */}
       <Text className="text-gray-800 text-base mb-4">
-        Recetas: 1
+        Recetas:{' '}
+        {loadingRecipes
+          ? 'cargando...'
+          : errorRecipes
+          ? '0 (error)'
+          : recipesCount}
       </Text>
 
       {/* Botones */}

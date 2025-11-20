@@ -30,7 +30,7 @@ export default function PedidosTable({ pedidos, onVerDetalle }: PedidosTableProp
           className={`px-3 py-1 rounded-md text-xs font-semibold ${
             item.estado === "Recibido"
               ? "bg-blue-300 text-blue-900"
-              : item.estado === "En producción"
+              : item.estado === "En Producción"
               ? "bg-yellow-300 text-yellow-900"
               : item.estado === "Listo"
               ? "bg-purple-300 text-purple-900"
@@ -96,10 +96,10 @@ export default function PedidosTable({ pedidos, onVerDetalle }: PedidosTableProp
           <Text className={`text-xs font-semibold ${selectedStatus === "Recibido" ? "text-blue-900" : "text-gray-700"}`}>Recibido</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => setSelectedStatus("En producción")}
-          className={`px-3 py-1 rounded-md mr-2 mb-2 ${selectedStatus === "En producción" ? "bg-yellow-300 text-yellow-900" : "bg-gray-200 text-gray-700"}`}
+          onPress={() => setSelectedStatus("En Producción")}
+          className={`px-3 py-1 rounded-md mr-2 mb-2 ${selectedStatus === "En Producción" ? "bg-yellow-300 text-yellow-900" : "bg-gray-200 text-gray-700"}`}
         >
-          <Text className={`text-xs font-semibold ${selectedStatus === "En producción" ? "text-yellow-900" : "text-gray-700"}`}>En producción</Text>
+          <Text className={`text-xs font-semibold ${selectedStatus === "En Producción" ? "text-yellow-900" : "text-gray-700"}`}>En Producción</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setSelectedStatus("Listo")}

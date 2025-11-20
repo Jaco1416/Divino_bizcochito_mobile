@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from 'react-native-screens/lib/typescript/n
 import { supabase } from "../../libs/supabaseClient";
 import { useAuth } from '../../contexts/AuthContext';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 interface CartItem {
   id: number;
   nombre: string;
@@ -113,17 +114,72 @@ function CartView() {
     return tipoEntrega === 'envio' ? subtotal + ENVIO_COSTO : subtotal;
   };
 
+  // Verifica contra API que los productos todavía existan; elimina los inválidos.
+  const validateProductsExist = async (items: CartItem[]) => {
+    if (!API_URL) return items;
+    const validIds = new Set<number>();
+    const invalidIds = new Set<number>();
+    const uniqueIds = Array.from(new Set(items.map((i) => Number(i.id))));
+
+    await Promise.all(
+      uniqueIds.map(async (id) => {
+        try {
+          const res = await fetch(`${API_URL}/productos?id=${id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.id != null) {
+              validIds.add(id);
+              return;
+            }
+          }
+          invalidIds.add(id);
+        } catch {
+          // Si falla el fetch, asumimos válido para no bloquear venta por red.
+          validIds.add(id);
+        }
+      })
+    );
+
+    if (invalidIds.size === 0) return items;
+
+    const filtered = items.filter((i) => validIds.has(Number(i.id)));
+    const removed = items.length - filtered.length;
+    if (removed > 0) {
+      await saveCart(filtered);
+      setCartItems(filtered);
+      Alert.alert("Productos removidos", `Quitamos ${removed} producto(s) que ya no existen.`);
+    }
+    return filtered;
+  };
+
   // Enviar carrito (sin cambios en la lógica existente)
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
+      const sanitized = cartItems.filter(
+        (i) => Number.isFinite(Number(i.id)) && Number(i.id) > 0
+      );
+
+      if (sanitized.length !== cartItems.length) {
+        await saveCart(sanitized);
+        setCartItems(sanitized);
+        alert("Algunos productos no eran válidos y fueron removidos del carrito.");
+      }
+
+      const validated = await validateProductsExist(sanitized);
+
+      if (validated.length === 0) {
+        alert("Tu carrito está vacío o no tiene productos válidos.");
+        return;
+      }
+
       const carritoData = {
         perfilid: user?.id ?? null,
         tipoentrega: tipoEntrega,
         datosenvio: formData,
-        items: cartItems,
+        items: validated,
         estado: "pendiente",
       };
 
@@ -144,13 +200,39 @@ function CartView() {
       console.log("✅ Carrito creado con ID:", nuevoCarrito.id);
       await AsyncStorage.setItem("@cart_id", String(nuevoCarrito.id));
 
+      const amount = validated.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
+      const itemsForBackend = validated.map((i) => ({
+        productId: Number(i.id),
+        cantidad: i.cantidad,
+        precioUnitario: i.precio,
+        toppingId: i.toppingId ?? null,
+        rellenoId: i.rellenoId ?? null,
+        mensajePersonalizado: i.mensajePersonalizado ?? null,
+        nombreProducto: i.nombre,
+        imagenProducto: i.imagen ?? null,
+      }));
+
+      // 🧩 Refuerzo: asegurar que la fila en Carrito guarda los items en la columna jsonb
+      const { error: errUpdateCarrito } = await supabase
+        .from("Carrito")
+        .update({ items: itemsForBackend, datosenvio: formData, tipoentrega: tipoEntrega })
+        .eq("id", nuevoCarrito.id);
+      if (errUpdateCarrito) {
+        console.warn("⚠️ No se pudo reforzar items en Carrito:", errUpdateCarrito);
+      }
+
       const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/webpay/init`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: cartItems.reduce((acc, i) => acc + i.precio * i.cantidad, 0),
+          amount,
           sessionId: String(nuevoCarrito.id),
           returnUrl: `${process.env.EXPO_PUBLIC_API_URL}/webpay/commit-mobile`,
+          // Enviamos el detalle al backend para que pueda crear detalle_pedido.
+          items: itemsForBackend,
+          tipoEntrega,
+          datosEnvio: formData,
+          perfilId: user?.id ?? null,
         }),
       });
 

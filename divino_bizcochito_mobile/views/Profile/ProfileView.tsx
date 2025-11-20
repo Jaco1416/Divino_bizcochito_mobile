@@ -80,7 +80,10 @@ function ProfileView() {
                 autor={user?.nombre || "Tú"}
                 descripcion={item.descripcion}
                 imagen={item.imagenUrl}
-                onPress={() => {}}
+                onPress={() => {navigation.navigate('DetalleReceta', {
+                    id: item.id,
+                    recipe: item, // pasa la receta para evitar refetch
+                  }) }}
               />
             )}
             keyExtractor={(item) => String(item.id)}

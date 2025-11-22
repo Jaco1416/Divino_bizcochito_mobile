@@ -9,9 +9,10 @@ const RELLENOS_PATH = "relleno";
 const CART_STORAGE_KEY = "@cart_items";
 
 interface DatosEnvio {
-  nombre: string;
-  correo: string;
-  direccion: string;
+  nombre?: string;
+  nombreReceptor?: string;
+  correo?: string;
+  direccion?: string;
   comentarios?: string;
 }
 
@@ -21,12 +22,16 @@ interface DetallePedido {
   productId?: number;
   producto_id?: number;
   product_id?: number;
+  producto?: { id?: number | string };
+  product?: { id?: number | string };
   cantidad: number;
   precioUnitario: number;
   nombreProducto: string;
   imagenProducto: string | null;
   toppingId: number | null;
   rellenoId: number | null;
+  mensajePersonalizado?: string | null;
+  mensaje?: string | null;
 }
 
 interface Pedido {
@@ -71,6 +76,7 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
   // Mapas id -> nombre
   const [toppingById, setToppingById] = useState<Record<number, string>>({});
   const [rellenoById, setRellenoById] = useState<Record<number, string>>({});
+  const [catalogErrorShown, setCatalogErrorShown] = useState(false);
 
   const fetchToppings = useCallback(async () => {
     try {
@@ -81,7 +87,13 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
       const map: Record<number, string> = {};
       for (const t of arr) if (t?.id != null) map[t.id] = t.nombre ?? String(t.id);
       setToppingById(map);
-    } catch {}
+    } catch (error) {
+      setCatalogErrorShown((prev) => {
+        if (!prev) Alert.alert("Aviso", "No se pudieron cargar los toppings, intenta nuevamente.");
+        return true;
+      });
+      console.error("Error al cargar toppings", error);
+    }
   }, []);
 
   const fetchRellenos = useCallback(async () => {
@@ -93,7 +105,13 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
       const map: Record<number, string> = {};
       for (const r of arr) if (r?.id != null) map[r.id] = r.nombre ?? String(r.id);
       setRellenoById(map);
-    } catch {}
+    } catch (error) {
+      setCatalogErrorShown((prev) => {
+        if (!prev) Alert.alert("Aviso", "No se pudieron cargar los rellenos, intenta nuevamente.");
+        return true;
+      });
+      console.error("Error al cargar rellenos", error);
+    }
   }, []);
 
   useFocusEffect(
@@ -125,7 +143,7 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
     );
   };
 
-  // Clave canónica
+  // Clave canónica para agrupar variantes iguales
   const canonicalVariantKey = (
     productId: number,
     toppingId?: number | null,
@@ -138,8 +156,16 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
 
   // Obtener siempre el productId de la fila
   const getProductIdFromRow = (row: DetallePedido): number | null => {
-    const pid = row.productoId ?? row.productId ?? row.producto_id ?? row.product_id ?? null;
-    return typeof pid === "number" ? pid : null;
+    const pid =
+      row.productoId ??
+      row.productId ??
+      row.producto_id ??
+      row.product_id ??
+      row.producto?.id ??
+      row.product?.id ??
+      null;
+    const pidNum = Number(pid);
+    return Number.isFinite(pidNum) && pidNum > 0 ? pidNum : null;
   };
 
   // Volver a pedir con merge robusto
@@ -161,7 +187,6 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
         const existing = map.get(key);
         if (existing) {
           existing.cantidad += Number(it.cantidad) || 0;
-          // Completar nombres si faltan
           if (!existing.topping && it.topping) existing.topping = it.topping;
           if (!existing.relleno && it.relleno) existing.relleno = it.relleno;
         } else {
@@ -169,39 +194,21 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
         }
       }
 
+      let missingProductRows = 0;
+
       // 2) Agregar filas del pedido usando SIEMPRE productId
       for (const row of detalle) {
         const productId = getProductIdFromRow(row);
-        const topId = row.toppingId ?? 0;
-        const relId = row.rellenoId ?? 0;
+        const topId = Number(row.toppingId ?? 0);
+        const relId = Number(row.rellenoId ?? 0);
+        const message = row.mensajePersonalizado ?? row.mensaje ?? "";
 
         if (!productId) {
-          // Raro: si la fila no trae productId, usa un id negativo para no mezclar con productos reales
-          const fallbackId = -Math.abs(row.id);
-          const key = canonicalVariantKey(fallbackId, topId, relId, "");
-          const ex = map.get(key);
-          if (ex) {
-            ex.cantidad += row.cantidad || 1;
-          } else {
-            map.set(key, {
-              id: fallbackId,
-              nombre: row.nombreProducto,
-              cantidad: row.cantidad || 1,
-              precio: row.precioUnitario || 0,
-              modificado: !!(row.toppingId || row.rellenoId),
-              toppingId: row.toppingId ?? undefined,
-              rellenoId: row.rellenoId ?? undefined,
-              topping: row.toppingId != null ? toppingById[row.toppingId] : undefined,
-              relleno: row.rellenoId != null ? rellenoById[row.rellenoId] : undefined,
-              imagen: row.imagenProducto || null,
-              mensajePersonalizado: undefined,
-              variantKey: key,
-            });
-          }
+          missingProductRows += 1;
           continue;
         }
 
-        const key = canonicalVariantKey(productId, topId, relId, "");
+        const key = canonicalVariantKey(productId, topId, relId, message);
         const ex = map.get(key);
         if (ex) {
           ex.cantidad += row.cantidad || 1;
@@ -219,7 +226,7 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
             topping: row.toppingId != null ? toppingById[row.toppingId] : undefined,
             relleno: row.rellenoId != null ? rellenoById[row.rellenoId] : undefined,
             imagen: row.imagenProducto || null,
-            mensajePersonalizado: undefined, // al reordenar asumimos sin mensaje
+            mensajePersonalizado: message || undefined,
             variantKey: key,
           });
         }
@@ -229,16 +236,21 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
 
       Alert.alert(
         "Pedido agregado",
-        "Los productos del pedido se agregaron al carrito.",
+        missingProductRows
+          ? "Los productos del pedido se agregaron al carrito. Algunos items no tenían ID de producto y se omitieron."
+          : "Los productos del pedido se agregaron al carrito.",
         [
           { text: "Seguir viendo", style: "cancel" },
           { text: "Ir al carrito", onPress: () => navigation.navigate("Carrito" as never) },
         ]
       );
-    } catch {
+    } catch (error) {
+      console.error("Error al volver a pedir", error);
       Alert.alert("Error", "No se pudo agregar el contenido del pedido al carrito.");
     }
   }, [pedido, navigation, toppingById, rellenoById]);
+
+
 
   const renderProducto = ({ item }: { item: DetallePedido }) => {
     const toppingNombre = item.toppingId != null ? toppingById[item.toppingId] ?? `#${item.toppingId}` : null;
@@ -325,9 +337,15 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
 
         {pedido.tipoEntrega === "envio" && pedido.datosEnvio && (
           <>
-            <Text className="text-gray-700 mt-1">Receptor: <Text className="font-medium">{pedido.datosEnvio.nombre}</Text></Text>
-            <Text className="text-gray-700">Dirección: <Text className="font-medium">{pedido.datosEnvio.direccion}</Text></Text>
-            <Text className="text-gray-700">Correo: <Text className="font-medium">{pedido.datosEnvio.correo}</Text></Text>
+            <Text className="text-gray-700 mt-1">
+              Receptor: <Text className="font-medium">{pedido.datosEnvio.nombreReceptor || pedido.datosEnvio.nombre || "-"}</Text>
+            </Text>
+            <Text className="text-gray-700">
+              Dirección: <Text className="font-medium">{pedido.datosEnvio.direccion || "-"}</Text>
+            </Text>
+            <Text className="text-gray-700">
+              Correo: <Text className="font-medium">{pedido.datosEnvio.correo || "-"}</Text>
+            </Text>
             {!!pedido.datosEnvio.comentarios && (
               <Text className="text-gray-700">Comentarios: <Text className="font-medium">{pedido.datosEnvio.comentarios}</Text></Text>
             )}

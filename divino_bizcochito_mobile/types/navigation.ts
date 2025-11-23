@@ -51,6 +51,9 @@ export type RootStackParamList = {
   PedidoDetalle: {
     id: number | string;
   };
+  EditProfileView: {
+    id: number | string;
+  };
 }
 
 export type AppNavigation = NativeStackNavigationProp<RootStackParamList>

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList, Image, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -44,6 +44,11 @@ function CartView() {
     comentarios: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [slots, setSlots] = useState<{ fecha: string; carga: number; restante: number }[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [superaMaximo, setSuperaMaximo] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const buildVariantKey = (item: Partial<CartItem>) => {
     return `${item.id}|t:${item.toppingId ?? 0}|r:${item.rellenoId ?? 0}|m:${(item.mensajePersonalizado ?? '').trim().toLowerCase()}`;
@@ -80,11 +85,11 @@ function CartView() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadCart();
-    }, [])
-  );
+    useFocusEffect(
+      useCallback(() => {
+        loadCart();
+      }, [])
+    );
 
   const formatPrice = (price: number) => `$${price.toLocaleString('es-CL')}`;
 
@@ -113,6 +118,36 @@ function CartView() {
     const subtotal = calculateSubtotal();
     return tipoEntrega === 'envio' ? subtotal + ENVIO_COSTO : subtotal;
   };
+
+  const totalItems = cartItems.reduce((sum, item) => sum + (Number(item.cantidad) || 0), 0);
+
+  const fetchSlots = useCallback(async () => {
+    if (!API_URL) return;
+    setSlotsLoading(true);
+    setSlotsError(null);
+    try {
+      const res = await fetch(`${API_URL}/configPedidos?items=${totalItems}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const arr = Array.isArray(data?.slots) ? data.slots : [];
+      setSlots(arr);
+      setSuperaMaximo(Boolean(data?.superaMaximo));
+      // Seleccionar por defecto el primer día con capacidad
+      const firstAvailable = arr.find((s: any) => (s?.restante ?? 0) > 0);
+      setSelectedDate((prev) => prev ?? (firstAvailable?.fecha || null));
+    } catch (err: any) {
+      console.error('❌ Error obteniendo slots:', err);
+      setSlotsError('No se pudo obtener fechas disponibles.');
+    } finally {
+      setSlotsLoading(false);
+    }
+  }, [totalItems]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchSlots();
+    }, [fetchSlots])
+  );
 
   // Verifica contra API que los productos todavía existan; elimina los inválidos.
   const validateProductsExist = async (items: CartItem[]) => {
@@ -158,6 +193,10 @@ function CartView() {
     setIsSubmitting(true);
 
     try {
+      if (!selectedDate) {
+        Alert.alert("Fecha requerida", "Selecciona una fecha de entrega disponible.");
+        return;
+      }
       const sanitized = cartItems.filter(
         (i) => Number.isFinite(Number(i.id)) && Number(i.id) > 0
       );
@@ -179,6 +218,7 @@ function CartView() {
         perfilid: user?.id ?? null,
         tipoentrega: tipoEntrega,
         datosenvio: formData,
+        fechaentrega: selectedDate,
         items: validated,
         estado: "pendiente",
       };
@@ -230,6 +270,7 @@ function CartView() {
           returnUrl: `${process.env.EXPO_PUBLIC_API_URL}/webpay/commit-mobile`,
           // Enviamos el detalle al backend para que pueda crear detalle_pedido.
           items: itemsForBackend,
+          fechaEntrega: selectedDate,
           tipoEntrega,
           datosEnvio: formData,
           perfilId: user?.id ?? null,
@@ -318,6 +359,52 @@ function CartView() {
       </TouchableOpacity>
     </View>
   );
+
+  const renderSlots = () => {
+    if (slotsLoading) {
+      return (
+        <View className="flex-row items-center mt-2 mb-2">
+          <ActivityIndicator color="#8B2E2E" />
+          <Text className="ml-2 text-gray-600">Cargando fechas...</Text>
+        </View>
+      );
+    }
+
+    if (slotsError) {
+      return <Text className="text-red-600 text-sm mt-2 mb-2">{slotsError}</Text>;
+    }
+
+    if (!slots.length) {
+      return <Text className="text-gray-600 text-sm mt-2 mb-2">No hay fechas disponibles.</Text>;
+    }
+
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2 mb-2">
+        {slots.map((slot) => {
+          const agotado = (slot.restante ?? 0) <= 0;
+          const active = selectedDate === slot.fecha;
+          return (
+            <TouchableOpacity
+              key={slot.fecha}
+              onPress={() => !agotado && setSelectedDate(slot.fecha)}
+              className={`mr-2 px-3 py-2 rounded-lg border ${
+                active ? 'bg-bizcochito-red border-bizcochito-red' : 'bg-white border-gray-300'
+              } ${agotado ? 'opacity-40' : ''}`}
+              disabled={agotado}
+              activeOpacity={0.85}
+            >
+              <Text className={`text-sm ${active ? 'text-white font-semibold' : 'text-gray-800'}`}>
+                {slot.fecha}
+              </Text>
+              <Text className={`text-xs ${active ? 'text-white' : 'text-gray-600'}`}>
+                Capacidad: {slot.restante}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    );
+  };
 
   return (
     <LayoutWithNavbar>
@@ -455,6 +542,21 @@ function CartView() {
                   onChangeText={(text) => setFormData({ ...formData, comentarios: text })}
                 />
               </View>
+            </View>
+
+            <View className="bg-white border border-gray-300 rounded-lg p-4 mb-4">
+              <Text className="text-2xl font-bold text-bizcochito-red text-center mb-3">
+                Fecha de entrega
+              </Text>
+              {superaMaximo && (
+                <Text className="text-red-600 text-sm text-center mb-2">
+                  Tienes más productos que el máximo permitido por pedido. Reduce la cantidad para elegir fecha.
+                </Text>
+              )}
+              {renderSlots()}
+              {selectedDate && (
+                <Text className="text-xs text-gray-600 text-center mt-1">Seleccionada: {selectedDate}</Text>
+              )}
             </View>
 
             <View className="bg-white border border-gray-300 rounded-lg p-4 mb-4">

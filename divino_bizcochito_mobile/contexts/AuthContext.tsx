@@ -19,6 +19,7 @@ interface AuthContextType {
   handleLogout: () => Promise<void>;
   handleLogin: (email: string, password: string) => Promise<{ error: any }>;
   handleRegister: (email: string, password: string, nombre: string, telefono: string) => Promise<{ error: any }>;
+  refreshPerfil: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   handleLogout: async () => {},
   handleLogin: async () => ({ error: null }),
   handleRegister: async () => ({ error: null }),
+  refreshPerfil: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -155,6 +157,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await clearSession();
   };
 
+  // 🔹 Refrescar perfil manualmente
+  const refreshPerfil = async () => {
+    if (!user?.id) return;
+    const perfilData = await fetchPerfil(user.id);
+    setPerfil(perfilData);
+    await saveSession(user, perfilData);
+  };
+
   // 🔹 Iniciar sesión
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -204,7 +214,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
   
   return (
-    <AuthContext.Provider value={{ user, perfil, loading, handleLogout, handleLogin, handleRegister }}>
+    <AuthContext.Provider value={{ user, perfil, loading, handleLogout, handleLogin, handleRegister, refreshPerfil }}>
       {children}
     </AuthContext.Provider>
   );

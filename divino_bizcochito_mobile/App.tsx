@@ -23,6 +23,7 @@ import PedidoView from './views/Pedido/PedidoView';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import { supabase } from './libs/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
+import EditProfileView from './views/Profile/EditProfileView';
 
 Notifications.setNotificationHandler({
   handleNotification: async (): Promise<Notifications.NotificationBehavior> =>
@@ -127,6 +128,7 @@ export default function App() {
           <Stack.Screen name="PagoView" component={PagoView} />
           <Stack.Screen name="ResultadoPago" component={ResultadoPagoView} />
           <Stack.Screen name="PedidoDetalle" component={PedidoView} />
+          <Stack.Screen name="EditProfileView" component={EditProfileView} />
         </Stack.Navigator>
         <StatusBar style="auto" />
       </NavigationContainer>

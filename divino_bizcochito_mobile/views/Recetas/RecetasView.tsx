@@ -26,7 +26,6 @@ const RECIPES_PATH = "recetas";
 // Configuración de grilla y paginación
 const ITEMS_PER_PAGE = 9; // 3 columnas x 3 filas
 const FAB_SIZE = 80; // w-20 h-20
-const PAGINATION_GAP = 12; // separación entre paginador y FAB
 
 // Normaliza el objeto de backend al tipo canónico de la app
 function normalizeRecipe(raw: any, idx: number): RecipeFromDB {
@@ -173,42 +172,27 @@ export default function RecetasView() {
     [navigation]
   );
 
-  // Posiciones absolutas para paginador y FAB respetando safe area
   const FAB_BOTTOM = Math.max(24, 24 + insets.bottom);
-  const PAGINATION_BOTTOM = FAB_BOTTOM + FAB_SIZE + PAGINATION_GAP;
 
-  const renderPagination = () => {
+  const Pagination = () => {
     const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
     return (
-      <View
-        className="absolute left-0 right-0 items-center"
-        style={{ bottom: PAGINATION_BOTTOM }}
-        pointerEvents="box-none"
-      >
-        <View className="flex-row justify-center items-center bg-white/90 rounded-full px-4 py-2">
-          {pages.map((p) => {
-            const active = p === currentPage;
-            return (
-              <TouchableOpacity
-                key={p}
-                onPress={() => goToPage(p)}
-                className={`mx-1 px-2 py-1 rounded ${
-                  active ? "bg-bizcochito-red" : ""
-                }`}
-                style={{ minWidth: 32 }}
-                activeOpacity={0.8}
-              >
-                <Text
-                  className={`text-sm ${
-                    active ? "text-white font-semibold" : "text-gray-700"
-                  } text-center`}
-                >
-                  {p}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+      <View className="flex-row items-center justify-end px-4 py-2">
+        {pages.map((p) => {
+          const active = p === currentPage;
+          return (
+            <TouchableOpacity
+              key={p}
+              onPress={() => goToPage(p)}
+              className={`mx-1 px-3 py-1 rounded-full ${active ? "bg-bizcochito-red" : "bg-gray-200"}`}
+              activeOpacity={0.85}
+            >
+              <Text className={`text-sm ${active ? "text-white font-semibold" : "text-gray-800"}`}>
+                {p}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     );
   };
@@ -244,11 +228,13 @@ export default function RecetasView() {
           )}
         </View>
 
+        <Pagination />
+
         <FlatList
           contentContainerStyle={{
             paddingHorizontal: 4,
-            // Espacio para que el contenido no quede bajo el paginador/FAB
-            paddingBottom: PAGINATION_BOTTOM + 24,
+            // Espacio para que el contenido no quede bajo el FAB
+            paddingBottom: FAB_BOTTOM + FAB_SIZE + 40,
           }}
           data={paginatedRecipes}
           renderItem={renderItem}
@@ -273,7 +259,6 @@ export default function RecetasView() {
           </View>
         )}
 
-        {renderPagination()}
         {renderFab()}
       </LayoutWithNavbar>
     </SafeAreaView>

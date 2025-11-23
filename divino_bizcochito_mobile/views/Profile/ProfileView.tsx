@@ -63,11 +63,16 @@ function ProfileView() {
     }, [])
   );
 
+  const handleEditProfile = () => {
+    navigation.navigate('EditProfileView', { id: user.id });
+  };
+
+
 
   return (
     <LayoutWithNavbar>
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
-        <ProfileCard />
+        <ProfileCard onEditPress={handleEditProfile} />
         
         <View className="p-4">
           <Text className="text-xl font-bold text-[#8B2E2E] mb-4">Mis Recetas</Text>

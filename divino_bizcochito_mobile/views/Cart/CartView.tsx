@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -30,6 +30,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, "Carrito">;
 
 const ENVIO_COSTO = 2000;
 const CART_STORAGE_KEY = '@cart_items';
+const SELECTED_DATE_STORAGE_KEY = '@selected_delivery_date';
 type TipoEntrega = 'retiro' | 'envio';
 
 function CartView() {
@@ -58,6 +59,10 @@ function CartView() {
   const loadCart = async () => {
     try {
       const cartData = await AsyncStorage.getItem(CART_STORAGE_KEY);
+      const storedDate = await AsyncStorage.getItem(SELECTED_DATE_STORAGE_KEY);
+      if (storedDate) {
+        setSelectedDate(storedDate);
+      }
       if (cartData) {
         const itemsParsed: any[] = JSON.parse(cartData);
         const normalized: CartItem[] = itemsParsed.map((it, idx) => {
@@ -132,9 +137,15 @@ function CartView() {
       const arr = Array.isArray(data?.slots) ? data.slots : [];
       setSlots(arr);
       setSuperaMaximo(Boolean(data?.superaMaximo));
-      // Seleccionar por defecto el primer día con capacidad
+      // Seleccionar por defecto el primer día con capacidad, o validar selección guardada
       const firstAvailable = arr.find((s: any) => (s?.restante ?? 0) > 0);
-      setSelectedDate((prev) => prev ?? (firstAvailable?.fecha || null));
+      setSelectedDate((prev) => {
+        const current = prev || null;
+        const match = arr.find((s: any) => s?.fecha === current);
+        const isValid = match && (match.restante ?? 0) > 0;
+        if (isValid) return current;
+        return firstAvailable?.fecha || null;
+      });
     } catch (err: any) {
       console.error('❌ Error obteniendo slots:', err);
       setSlotsError('No se pudo obtener fechas disponibles.');
@@ -148,6 +159,21 @@ function CartView() {
       fetchSlots();
     }, [fetchSlots])
   );
+
+  useEffect(() => {
+    const persistDate = async () => {
+      try {
+        if (selectedDate) {
+          await AsyncStorage.setItem(SELECTED_DATE_STORAGE_KEY, selectedDate);
+        } else {
+          await AsyncStorage.removeItem(SELECTED_DATE_STORAGE_KEY);
+        }
+      } catch (error) {
+        console.error('❌ Error guardando fecha seleccionada:', error);
+      }
+    };
+    persistDate();
+  }, [selectedDate]);
 
   // Verifica contra API que los productos todavía existan; elimina los inválidos.
   const validateProductsExist = async (items: CartItem[]) => {
@@ -214,11 +240,12 @@ function CartView() {
         return;
       }
 
+      const datosEnvioWithDate = { ...formData, fechaEntrega: selectedDate };
+
       const carritoData = {
         perfilid: user?.id ?? null,
         tipoentrega: tipoEntrega,
-        datosenvio: formData,
-        fechaentrega: selectedDate,
+        datosenvio: datosEnvioWithDate,
         items: validated,
         estado: "pendiente",
       };
@@ -255,7 +282,11 @@ function CartView() {
       // 🧩 Refuerzo: asegurar que la fila en Carrito guarda los items en la columna jsonb
       const { error: errUpdateCarrito } = await supabase
         .from("Carrito")
-        .update({ items: itemsForBackend, datosenvio: formData, tipoentrega: tipoEntrega })
+        .update({
+          items: itemsForBackend,
+          datosenvio: datosEnvioWithDate,
+          tipoentrega: tipoEntrega,
+        })
         .eq("id", nuevoCarrito.id);
       if (errUpdateCarrito) {
         console.warn("⚠️ No se pudo reforzar items en Carrito:", errUpdateCarrito);
@@ -383,14 +414,15 @@ function CartView() {
         {slots.map((slot) => {
           const agotado = (slot.restante ?? 0) <= 0;
           const active = selectedDate === slot.fecha;
+          const bloqueado = superaMaximo || agotado;
           return (
             <TouchableOpacity
               key={slot.fecha}
-              onPress={() => !agotado && setSelectedDate(slot.fecha)}
+              onPress={() => !bloqueado && setSelectedDate(slot.fecha)}
               className={`mr-2 px-3 py-2 rounded-lg border ${
                 active ? 'bg-bizcochito-red border-bizcochito-red' : 'bg-white border-gray-300'
-              } ${agotado ? 'opacity-40' : ''}`}
-              disabled={agotado}
+              } ${bloqueado ? 'opacity-40' : ''}`}
+              disabled={bloqueado}
               activeOpacity={0.85}
             >
               <Text className={`text-sm ${active ? 'text-white font-semibold' : 'text-gray-800'}`}>

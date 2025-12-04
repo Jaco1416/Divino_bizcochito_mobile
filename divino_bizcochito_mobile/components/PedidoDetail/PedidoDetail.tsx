@@ -32,6 +32,7 @@ interface DetallePedido {
   rellenoId: number | null;
   mensajePersonalizado?: string | null;
   mensaje?: string | null;
+  sku?: string | null;
 }
 
 interface Pedido {
@@ -209,7 +210,7 @@ export default function PedidoDetail({ pedido, onCancelar, onVolver }: PedidoDet
         }
 
         const key = canonicalVariantKey(productId, topId, relId, message);
-        const ex = map.get(key);
+          const ex = map.get(key);
         if (ex) {
           ex.cantidad += row.cantidad || 1;
           if (!ex.topping && row.toppingId != null) ex.topping = toppingById[row.toppingId];

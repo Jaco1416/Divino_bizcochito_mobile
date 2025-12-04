@@ -31,6 +31,7 @@ interface Product {
   ventas?: number;
   toppingId?: number;
   rellenoId?: number;
+  sku?: string | null;
 }
 
 interface Topping { id: number; nombre: string; }
@@ -113,6 +114,7 @@ export default function DetalleProductoView() {
         ventas: data?.ventas ?? 0,
         toppingId: data?.toppingId,
         rellenoId: data?.rellenoId,
+        sku: data?.sku ?? data?.SKU ?? null,
       };
 
       setProduct(normalized);
@@ -271,6 +273,9 @@ export default function DetalleProductoView() {
 
               {/* Nombre y precio */}
               <Text className="text-3xl font-bold text-bizcochito-red mb-2">{product.nombre}</Text>
+              {!!product.sku && (
+                <Text className="text-sm text-gray-500 mb-1">SKU: {product.sku}</Text>
+              )}
               <Text className="text-2xl font-bold text-gray-900 mb-4">{formatPrice(product.precio)}</Text>
 
               {!!product.categoriaId && <Text className="text-sm text-gray-600 mb-4">Categoría: {product.categoriaId}</Text>}
